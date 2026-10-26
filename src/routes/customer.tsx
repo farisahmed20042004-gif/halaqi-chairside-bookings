@@ -102,7 +102,7 @@ function CustomerPage() {
   if (step === "done") {
     return (
       <MobileFrame>
-        <PageHeader title="تم إرسال الطلب" />
+        <PageHeader title="ملخص الحجز" />
         <div className="space-y-6 px-5 pt-10 text-center">
           <div className="mx-auto flex size-20 items-center justify-center rounded-full bg-success/15 text-success">
             <CalendarCheck className="size-10" />
