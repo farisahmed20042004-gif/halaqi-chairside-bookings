@@ -3,7 +3,7 @@ import { ArrowRight, CalendarDays, Info, LayoutDashboard, Wallet } from "lucide-
 import type { ReactNode } from "react";
 
 import { cn } from "@/lib/utils";
-import type { AppointmentStatus, DebtStatus } from "@/lib/demo-data";
+import { formatNumber, type AppointmentStatus, type DebtStatus } from "@/lib/demo-data";
 
 export function MobileFrame({ children, withNav = false }: { children: ReactNode; withNav?: boolean }) {
   return (
