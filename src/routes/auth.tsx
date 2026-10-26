@@ -13,11 +13,13 @@ type Mode = "signin" | "signup";
 type AccountType = "barber" | "customer";
 
 export const Route = createFileRoute("/auth")({
-  validateSearch: (s: Record<string, unknown>) => ({
-    redirect: typeof s.redirect === "string" ? s.redirect : undefined,
-    mode: s.mode === "signup" ? ("signup" as const) : s.mode === "signin" ? ("signin" as const) : undefined,
-    as: s.as === "barber" ? ("barber" as const) : s.as === "customer" ? ("customer" as const) : undefined,
-  }),
+  validateSearch: (s: Record<string, unknown>): { redirect?: string; mode?: Mode; as?: AccountType } => {
+    const out: { redirect?: string; mode?: Mode; as?: AccountType } = {};
+    if (typeof s["redirect"] === "string") out.redirect = s["redirect"];
+    if (s["mode"] === "signup" || s["mode"] === "signin") out.mode = s["mode"];
+    if (s["as"] === "barber" || s["as"] === "customer") out.as = s["as"];
+    return out;
+  },
   head: () => ({
     meta: [
       { title: "الدخول — حلاقي" },

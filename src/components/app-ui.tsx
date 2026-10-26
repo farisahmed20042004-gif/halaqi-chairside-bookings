@@ -180,7 +180,7 @@ export function Chip({ active, onClick, children, disabled }: { active: boolean;
   );
 }
 
-export function EmptyState({ title, hint }: { title: string; hint?: string }) {
+export function EmptyState({ title, hint }: { title: string; hint?: string | undefined }) {
   return (
     <div className="rounded-2xl border border-dashed bg-card px-6 py-10 text-center">
       <p className="font-semibold">{title}</p>
