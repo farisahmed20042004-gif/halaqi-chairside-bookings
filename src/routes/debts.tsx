@@ -121,7 +121,7 @@ function DebtsPage() {
   );
 }
 
-function Figure({ label, value, tone }: { label: string; value: string; tone?: "success" | "danger" }) {
+function Figure({ label, value, tone }: { label: string; value: string; tone?: "success" | "danger" | undefined }) {
   return (
     <div>
       <p className="text-[11px] text-muted-foreground">{label}</p>

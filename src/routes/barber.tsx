@@ -264,7 +264,7 @@ function NewAppointmentSheet({
   onSave: (a: Appointment) => void;
 }) {
   const [customer, setCustomer] = useState("");
-  const [service, setService] = useState(SERVICES[0]);
+  const [service, setService] = useState<string>(SERVICES[0]);
   const [time, setTime] = useState("");
 
   const valid = customer.trim().length > 1 && time;

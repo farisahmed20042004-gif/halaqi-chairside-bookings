@@ -20,7 +20,7 @@ export interface Debt {
   paid: number;
   date: string;
   time: string;
-  note?: string;
+  note?: string | undefined;
 }
 
 export const DEMO_TODAY = "2026-10-27";
@@ -31,7 +31,7 @@ export const DEMO_BARBER = {
   area: "بغداد — الكرادة",
 };
 
-export const SERVICES = ["قص شعر", "حلاقة ذقن", "قص + ذقن", "تنظيف بشرة"];
+export const SERVICES = ["قص شعر", "حلاقة ذقن", "قص + ذقن", "تنظيف بشرة"] as const;
 
 export const demoAppointments: Appointment[] = [
   { id: "a1", customer: "حسين جاسم", service: "قص + ذقن", date: "2026-10-27", time: "10:00", status: "completed" },
@@ -93,7 +93,7 @@ export function formatDate(iso: string, opts: Intl.DateTimeFormatOptions = { wee
 }
 
 export function formatTime(hhmm: string) {
-  const [h, m] = hhmm.split(":").map(Number);
+  const [h = 0, m = 0] = hhmm.split(":").map(Number);
   const period = h < 12 ? "ص" : "م";
   const h12 = h % 12 === 0 ? 12 : h % 12;
   return `${numberFmt.format(h12)}:${numberFmt.format(m).padStart(2, numberFmt.format(0))} ${period}`;

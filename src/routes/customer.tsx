@@ -42,7 +42,7 @@ function CustomerPage() {
   const [codeError, setCodeError] = useState("");
   const [date, setDate] = useState(DEMO_TODAY);
   const [time, setTime] = useState("");
-  const [service, setService] = useState(SERVICES[0]);
+  const [service, setService] = useState<string>(SERVICES[0]);
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
 
