@@ -10,73 +10,85 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
-import { Route as AppointmentsRouteImport } from './routes/appointments'
-import { Route as BarberRouteImport } from './routes/barber'
-import { Route as CustomerRouteImport } from './routes/customer'
-import { Route as DebtsRouteImport } from './routes/debts'
+import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
+import { Route as AuthRouteImport } from './routes/auth'
+import { Route as AuthenticatedAppointmentsRouteImport } from './routes/_authenticated/appointments'
+import { Route as AuthenticatedBarberRouteImport } from './routes/_authenticated/barber'
+import { Route as AuthenticatedDebtsRouteImport } from './routes/_authenticated/debts'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
-const AppointmentsRoute = AppointmentsRouteImport.update({
-  id: '/appointments',
-  path: '/appointments',
+const AuthenticatedRouteRoute = AuthenticatedRouteRouteImport.update({
+  id: '/_authenticated',
   getParentRoute: () => rootRouteImport,
 } as any)
-const BarberRoute = BarberRouteImport.update({
+const AuthRoute = AuthRouteImport.update({
+  id: '/auth',
+  path: '/auth',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AuthenticatedAppointmentsRoute =
+  AuthenticatedAppointmentsRouteImport.update({
+    id: '/appointments',
+    path: '/appointments',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const AuthenticatedBarberRoute = AuthenticatedBarberRouteImport.update({
   id: '/barber',
   path: '/barber',
-  getParentRoute: () => rootRouteImport,
+  getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
-const CustomerRoute = CustomerRouteImport.update({
-  id: '/customer',
-  path: '/customer',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const DebtsRoute = DebtsRouteImport.update({
+const AuthenticatedDebtsRoute = AuthenticatedDebtsRouteImport.update({
   id: '/debts',
   path: '/debts',
-  getParentRoute: () => rootRouteImport,
+  getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
-  '/appointments': typeof AppointmentsRoute
-  '/barber': typeof BarberRoute
-  '/customer': typeof CustomerRoute
-  '/debts': typeof DebtsRoute
+  '/auth': typeof AuthRoute
+  '/appointments': typeof AuthenticatedAppointmentsRoute
+  '/barber': typeof AuthenticatedBarberRoute
+  '/debts': typeof AuthenticatedDebtsRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
-  '/appointments': typeof AppointmentsRoute
-  '/barber': typeof BarberRoute
-  '/customer': typeof CustomerRoute
-  '/debts': typeof DebtsRoute
+  '/auth': typeof AuthRoute
+  '/appointments': typeof AuthenticatedAppointmentsRoute
+  '/barber': typeof AuthenticatedBarberRoute
+  '/debts': typeof AuthenticatedDebtsRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
-  '/appointments': typeof AppointmentsRoute
-  '/barber': typeof BarberRoute
-  '/customer': typeof CustomerRoute
-  '/debts': typeof DebtsRoute
+  '/_authenticated': typeof AuthenticatedRouteRouteWithChildren
+  '/auth': typeof AuthRoute
+  '/_authenticated/appointments': typeof AuthenticatedAppointmentsRoute
+  '/_authenticated/barber': typeof AuthenticatedBarberRoute
+  '/_authenticated/debts': typeof AuthenticatedDebtsRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/appointments' | '/barber' | '/customer' | '/debts'
+  fullPaths: '/' | '/auth' | '/appointments' | '/barber' | '/debts'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/appointments' | '/barber' | '/customer' | '/debts'
-  id: '__root__' | '/' | '/appointments' | '/barber' | '/customer' | '/debts'
+  to: '/' | '/auth' | '/appointments' | '/barber' | '/debts'
+  id:
+    | '__root__'
+    | '/'
+    | '/_authenticated'
+    | '/auth'
+    | '/_authenticated/appointments'
+    | '/_authenticated/barber'
+    | '/_authenticated/debts'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
-  AppointmentsRoute: typeof AppointmentsRoute
-  BarberRoute: typeof BarberRoute
-  CustomerRoute: typeof CustomerRoute
-  DebtsRoute: typeof DebtsRoute
+  AuthenticatedRouteRoute: typeof AuthenticatedRouteRouteWithChildren
+  AuthRoute: typeof AuthRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -88,43 +100,63 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/appointments': {
-      id: '/appointments'
+    '/_authenticated': {
+      id: '/_authenticated'
+      path: ''
+      fullPath: '/'
+      preLoaderRoute: typeof AuthenticatedRouteRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/auth': {
+      id: '/auth'
+      path: '/auth'
+      fullPath: '/auth'
+      preLoaderRoute: typeof AuthRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/_authenticated/appointments': {
+      id: '/_authenticated/appointments'
       path: '/appointments'
       fullPath: '/appointments'
-      preLoaderRoute: typeof AppointmentsRouteImport
-      parentRoute: typeof rootRouteImport
+      preLoaderRoute: typeof AuthenticatedAppointmentsRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
     }
-    '/barber': {
-      id: '/barber'
+    '/_authenticated/barber': {
+      id: '/_authenticated/barber'
       path: '/barber'
       fullPath: '/barber'
-      preLoaderRoute: typeof BarberRouteImport
-      parentRoute: typeof rootRouteImport
+      preLoaderRoute: typeof AuthenticatedBarberRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
     }
-    '/customer': {
-      id: '/customer'
-      path: '/customer'
-      fullPath: '/customer'
-      preLoaderRoute: typeof CustomerRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/debts': {
-      id: '/debts'
+    '/_authenticated/debts': {
+      id: '/_authenticated/debts'
       path: '/debts'
       fullPath: '/debts'
-      preLoaderRoute: typeof DebtsRouteImport
-      parentRoute: typeof rootRouteImport
+      preLoaderRoute: typeof AuthenticatedDebtsRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
     }
   }
 }
 
+interface AuthenticatedRouteRouteChildren {
+  AuthenticatedAppointmentsRoute: typeof AuthenticatedAppointmentsRoute
+  AuthenticatedBarberRoute: typeof AuthenticatedBarberRoute
+  AuthenticatedDebtsRoute: typeof AuthenticatedDebtsRoute
+}
+
+const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
+  AuthenticatedAppointmentsRoute: AuthenticatedAppointmentsRoute,
+  AuthenticatedBarberRoute: AuthenticatedBarberRoute,
+  AuthenticatedDebtsRoute: AuthenticatedDebtsRoute,
+}
+
+const AuthenticatedRouteRouteWithChildren =
+  AuthenticatedRouteRoute._addFileChildren(AuthenticatedRouteRouteChildren)
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
-  AppointmentsRoute: AppointmentsRoute,
-  BarberRoute: BarberRoute,
-  CustomerRoute: CustomerRoute,
-  DebtsRoute: DebtsRoute,
+  AuthenticatedRouteRoute: AuthenticatedRouteRouteWithChildren,
+  AuthRoute: AuthRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
