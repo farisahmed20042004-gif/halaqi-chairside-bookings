@@ -12,6 +12,6 @@
 ## Project rules
 
 - The app is Arabic-only and RTL: `<html lang="ar" dir="rtl">` is set in `__root.tsx`; use logical layout (start/end, gap) rather than left/right assumptions. Why: every screen must read right-to-left.
-- Sample data lives in `src/lib/demo-data.ts` and pages copy it into local state; screens that are not backed by real storage must show `DemoNotice`. Why: the user requires that saving, login, conflict prevention and notifications are never implied before they are built and tested.
-- Demo dates are anchored to the fixed `DEMO_TODAY` constant and formatted with `timeZone: "UTC"`. Why: avoids server/client hydration mismatches from clock or timezone differences.
+- Screens read and write real backend data; never show invented data as if it were real. Why: the user requires that saving, login, conflict prevention and notifications are never implied before they are built and tested.
+- PWA is manifest-only (`public/manifest.webmanifest`, icons in `public/icons/`, head links in `__root.tsx`); no service worker unless offline support is explicitly requested. Why: installable/APK-ready without stale-cache risk in previews.
 - Layout is mobile-first inside a `max-w-md` frame (`MobileFrame`); barber pages share the bottom `BarberNav`. Why: primary target is Android phone screens.
