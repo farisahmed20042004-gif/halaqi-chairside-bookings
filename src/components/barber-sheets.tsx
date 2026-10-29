@@ -70,18 +70,21 @@ export function DayPicker({ shop, value, onChange, days = 7 }: { shop: Shop; val
 
 export function SlotGrid({
   barberId,
+  serviceId,
   timezone,
   day,
   value,
   onChange,
 }: {
   barberId: string;
+  serviceId: string;
   timezone: string;
   day: string;
   value: string;
   onChange: (startsAt: string) => void;
 }) {
-  const { data, isPending, isError } = useQuery(slotsQuery(barberId, day));
+  const { data, isPending, isError } = useQuery({ ...slotsQuery(barberId, day, serviceId), enabled: !!serviceId });
+  if (!serviceId) return <p className="py-6 text-center text-sm text-muted-foreground">اختر الخدمة أولاً.</p>;
   if (isPending) return <p className="py-6 text-center text-sm text-muted-foreground">جارٍ تحميل الأوقات…</p>;
   if (isError) return <p className="py-6 text-center text-sm text-destructive">تعذّر تحميل الأوقات.</p>;
   if (data.length === 0) return <p className="py-6 text-center text-sm text-muted-foreground">لا توجد أوقات عمل في هذا اليوم.</p>;
