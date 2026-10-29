@@ -8,6 +8,13 @@
       "when": 1793051508954,
       "tag": "0000_halaqi_core_schema",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1793292172349,
+      "tag": "0001_phase1_roles_services_booking_debts",
+      "breakpoints": true
     }
   ]
 }

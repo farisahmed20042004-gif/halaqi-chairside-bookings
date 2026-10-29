@@ -17,36 +17,60 @@ export type Database = {
       appointments: {
         Row: {
           barber_id: string
+          cancelled_at: string | null
+          cancelled_by: string | null
           created_at: string
           customer_id: string | null
           customer_name: string
           customer_phone: string | null
+          duration_minutes: number | null
+          ends_at: string | null
           id: string
+          price: number | null
+          rescheduled_from: string | null
           service: string
+          service_id: string | null
           starts_at: string
           status: Database["public"]["Enums"]["appointment_status"]
+          updated_at: string
         }
         Insert: {
           barber_id: string
+          cancelled_at?: string | null
+          cancelled_by?: string | null
           created_at?: string
           customer_id?: string | null
           customer_name: string
           customer_phone?: string | null
+          duration_minutes?: number | null
+          ends_at?: string | null
           id?: string
+          price?: number | null
+          rescheduled_from?: string | null
           service: string
+          service_id?: string | null
           starts_at: string
           status?: Database["public"]["Enums"]["appointment_status"]
+          updated_at?: string
         }
         Update: {
           barber_id?: string
+          cancelled_at?: string | null
+          cancelled_by?: string | null
           created_at?: string
           customer_id?: string | null
           customer_name?: string
           customer_phone?: string | null
+          duration_minutes?: number | null
+          ends_at?: string | null
           id?: string
+          price?: number | null
+          rescheduled_from?: string | null
           service?: string
+          service_id?: string | null
           starts_at?: string
           status?: Database["public"]["Enums"]["appointment_status"]
+          updated_at?: string
         }
         Relationships: [
           {
@@ -56,10 +80,18 @@ export type Database = {
             referencedRelation: "barbers"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "appointments_service_id_fkey"
+            columns: ["service_id"]
+            isOneToOne: false
+            referencedRelation: "services"
+            referencedColumns: ["id"]
+          },
         ]
       }
       barbers: {
         Row: {
+          address: string | null
           area: string | null
           barber_name: string
           close_time: string
@@ -74,6 +106,7 @@ export type Database = {
           timezone: string
         }
         Insert: {
+          address?: string | null
           area?: string | null
           barber_name: string
           close_time?: string
@@ -88,6 +121,7 @@ export type Database = {
           timezone?: string
         }
         Update: {
+          address?: string | null
           area?: string | null
           barber_name?: string
           close_time?: string
@@ -108,27 +142,39 @@ export type Database = {
           amount: number
           barber_id: string
           created_at: string
+          created_by: string | null
+          customer_id: string | null
           customer_name: string
           customer_phone: string | null
           id: string
+          link_code: string | null
+          linked_at: string | null
           note: string | null
         }
         Insert: {
           amount: number
           barber_id: string
           created_at?: string
+          created_by?: string | null
+          customer_id?: string | null
           customer_name: string
           customer_phone?: string | null
           id?: string
+          link_code?: string | null
+          linked_at?: string | null
           note?: string | null
         }
         Update: {
           amount?: number
           barber_id?: string
           created_at?: string
+          created_by?: string | null
+          customer_id?: string | null
           customer_name?: string
           customer_phone?: string | null
           id?: string
+          link_code?: string | null
+          linked_at?: string | null
           note?: string | null
         }
         Relationships: [
@@ -145,6 +191,7 @@ export type Database = {
         Row: {
           amount: number
           barber_id: string
+          created_by: string | null
           debt_id: string
           id: string
           paid_at: string
@@ -152,6 +199,7 @@ export type Database = {
         Insert: {
           amount: number
           barber_id: string
+          created_by?: string | null
           debt_id: string
           id?: string
           paid_at?: string
@@ -159,6 +207,7 @@ export type Database = {
         Update: {
           amount?: number
           barber_id?: string
+          created_by?: string | null
           debt_id?: string
           id?: string
           paid_at?: string
@@ -201,29 +250,148 @@ export type Database = {
         }
         Relationships: []
       }
+      services: {
+        Row: {
+          barber_id: string
+          created_at: string
+          description: string | null
+          duration_minutes: number
+          id: string
+          is_active: boolean
+          name: string
+          price: number
+          sort_order: number
+          updated_at: string
+        }
+        Insert: {
+          barber_id: string
+          created_at?: string
+          description?: string | null
+          duration_minutes: number
+          id?: string
+          is_active?: boolean
+          name: string
+          price: number
+          sort_order?: number
+          updated_at?: string
+        }
+        Update: {
+          barber_id?: string
+          created_at?: string
+          description?: string | null
+          duration_minutes?: number
+          id?: string
+          is_active?: boolean
+          name?: string
+          price?: number
+          sort_order?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "services_barber_id_fkey"
+            columns: ["barber_id"]
+            isOneToOne: false
+            referencedRelation: "barbers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      shop_customers: {
+        Row: {
+          barber_id: string
+          created_at: string
+          customer_id: string
+          display_name: string
+          last_booked_at: string | null
+          phone: string | null
+        }
+        Insert: {
+          barber_id: string
+          created_at?: string
+          customer_id: string
+          display_name: string
+          last_booked_at?: string | null
+          phone?: string | null
+        }
+        Update: {
+          barber_id?: string
+          created_at?: string
+          customer_id?: string
+          display_name?: string
+          last_booked_at?: string | null
+          phone?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "shop_customers_barber_id_fkey"
+            columns: ["barber_id"]
+            isOneToOne: false
+            referencedRelation: "barbers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      user_roles: {
+        Row: {
+          created_at: string
+          id: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          role?: Database["public"]["Enums"]["app_role"]
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
+      assert_bookable_slot: {
+        Args: {
+          p_barber: Database["public"]["Tables"]["barbers"]["Row"]
+          p_duration: number
+          p_starts_at: string
+        }
+        Returns: undefined
+      }
       book_appointment: {
         Args: {
           p_barber_id: string
-          p_customer_name: string
+          p_customer_name?: string
           p_customer_phone?: string
-          p_service: string
+          p_service_id: string
           p_starts_at: string
         }
         Returns: {
           barber_id: string
+          cancelled_at: string | null
+          cancelled_by: string | null
           created_at: string
           customer_id: string | null
           customer_name: string
           customer_phone: string | null
+          duration_minutes: number | null
+          ends_at: string | null
           id: string
+          price: number | null
+          rescheduled_from: string | null
           service: string
+          service_id: string | null
           starts_at: string
           status: Database["public"]["Enums"]["appointment_status"]
+          updated_at: string
         }
         SetofOptions: {
           from: "*"
@@ -233,12 +401,15 @@ export type Database = {
         }
       }
       cancel_my_appointment: { Args: { p_id: string }; Returns: undefined }
+      claim_debt: { Args: { p_code: string }; Returns: string }
       find_barber_by_code: {
         Args: { p_code: string }
         Returns: {
+          address: string
           area: string
           barber_name: string
           close_time: string
+          code: string
           days_off: number[]
           id: string
           open_time: string
@@ -248,8 +419,14 @@ export type Database = {
         }[]
       }
       generate_barber_code: { Args: never; Returns: string }
+      generate_debt_link_code: { Args: never; Returns: string }
       get_available_slots: {
-        Args: { p_barber_id: string; p_day: string }
+        Args: {
+          p_barber_id: string
+          p_day: string
+          p_ignore_appointment?: string
+          p_service_id: string
+        }
         Returns: {
           available: boolean
           starts_at: string
@@ -258,19 +435,87 @@ export type Database = {
       get_my_appointments: {
         Args: never
         Returns: {
+          barber_id: string
           barber_name: string
+          days_off: number[]
+          duration_minutes: number
+          ends_at: string
           id: string
+          price: number
+          rescheduled_from: string
           service: string
+          service_id: string
           shop_name: string
           starts_at: string
           status: Database["public"]["Enums"]["appointment_status"]
           timezone: string
         }[]
       }
+      get_my_shops: {
+        Args: never
+        Returns: {
+          address: string
+          area: string
+          barber_name: string
+          code: string
+          id: string
+          shop_name: string
+        }[]
+      }
+      get_shop_services: {
+        Args: { p_barber_id: string }
+        Returns: {
+          description: string
+          duration_minutes: number
+          id: string
+          name: string
+          price: number
+        }[]
+      }
+      has_role: {
+        Args: {
+          _role: Database["public"]["Enums"]["app_role"]
+          _user_id: string
+        }
+        Returns: boolean
+      }
       is_barber_owner: { Args: { _barber_id: string }; Returns: boolean }
+      link_debt_to_customer: {
+        Args: { p_customer_id: string; p_debt_id: string }
+        Returns: undefined
+      }
+      reschedule_appointment: {
+        Args: { p_id: string; p_new_starts_at: string }
+        Returns: {
+          barber_id: string
+          cancelled_at: string | null
+          cancelled_by: string | null
+          created_at: string
+          customer_id: string | null
+          customer_name: string
+          customer_phone: string | null
+          duration_minutes: number | null
+          ends_at: string | null
+          id: string
+          price: number | null
+          rescheduled_from: string | null
+          service: string
+          service_id: string | null
+          starts_at: string
+          status: Database["public"]["Enums"]["appointment_status"]
+          updated_at: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "appointments"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
     }
     Enums: {
-      appointment_status: "confirmed" | "completed" | "cancelled"
+      app_role: "barber" | "customer"
+      appointment_status: "pending" | "confirmed" | "completed" | "cancelled"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -398,7 +643,8 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
-      appointment_status: ["confirmed", "completed", "cancelled"],
+      app_role: ["barber", "customer"],
+      appointment_status: ["pending", "confirmed", "completed", "cancelled"],
     },
   },
 } as const
