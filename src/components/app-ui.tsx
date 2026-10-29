@@ -97,6 +97,7 @@ export function BarberNav() {
 }
 
 const appointmentStatusMap: Record<AppointmentStatus, { label: string; className: string }> = {
+  pending: { label: "بانتظار التأكيد", className: "bg-warning/20 text-warning-foreground" },
   confirmed: { label: "مؤكد", className: "bg-primary/10 text-primary" },
   completed: { label: "مكتمل", className: "bg-success/15 text-success" },
   cancelled: { label: "ملغي", className: "bg-destructive/10 text-destructive" },
