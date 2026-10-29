@@ -99,7 +99,7 @@ check("overlapping booking (inside a 60-min appointment) rejected", msg(overlap)
 const [o1, o2] = await Promise.all([book(loser, combo.id, plus(T, 120)), book(cust3, cut.id, plus(T, 150))]);
 check("simultaneous overlapping requests: only one succeeds", [o1, o2].filter((r) => !r.error).length === 1, [msg(o1), msg(o2)]);
 const after = await cust1.c.rpc("get_available_slots", { p_barber_id: shopA!.id, p_day: tomorrow, p_service_id: cut.id });
-const avail = (iso: string) => after.data?.find((s) => s.starts_at === iso)?.available;
+const avail = (iso: string) => after.data?.find((s) => new Date(s.starts_at).getTime() === new Date(iso).getTime())?.available;
 check("booked time and its covered half-hour show as taken", avail(T) === false && avail(plus(T, 30)) === false && avail(plus(T, 60)) === true);
 
 check("inactive service cannot be booked", msg(await book(cust1, off.id, plus(T, 300))).includes("SERVICE_UNAVAILABLE"));
