@@ -57,8 +57,8 @@ check("barber B cannot read A's shop row", ((await barberB.c.from("barbers").sel
 const svc = await barberA.c
   .from("services")
   .insert([
-    { barber_id: shopA!.id, name: "قص شعر", price: 10000, duration_minutes: 30 },
-    { barber_id: shopA!.id, name: "قص + ذقن", price: 15000, duration_minutes: 60 },
+    { barber_id: shopA!.id, name: "قص شعر", price: 10000, duration_minutes: 30, is_active: true },
+    { barber_id: shopA!.id, name: "قص + ذقن", price: 15000, duration_minutes: 60, is_active: true },
     { barber_id: shopA!.id, name: "خدمة موقوفة", price: 5000, duration_minutes: 30, is_active: false },
   ])
   .select();
