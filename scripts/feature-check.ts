@@ -149,7 +149,8 @@ const barberCancel = await barberA.c.from("appointments").update({ status: "canc
 check("barber can still cancel from the dashboard", barberCancel.data?.status === "cancelled", msg(barberCancel));
 const notes2 = await cust2.c.from("notifications").select("kind").eq("appointment_id", b2.data!.id);
 check("customer is told when the barber cancels", notes2.data?.[0]?.kind === "appointment_cancelled_by_barber", msg(notes2));
-check("appointments are never deleted", !!(await barberA.c.from("appointments").delete().eq("id", b2.data!.id).select()).data?.length === false);
+await barberA.c.from("appointments").delete().eq("id", b2.data!.id);
+check("appointments are never deleted", !!(await barberA.c.from("appointments").select("id").eq("id", b2.data!.id).maybeSingle()).data);
 
 console.log(failures === 0 ? "\nALL CHECKS PASSED" : `\n${failures} CHECK(S) FAILED`);
 process.exit(failures === 0 ? 0 : 1);
