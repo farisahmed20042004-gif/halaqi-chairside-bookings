@@ -15,6 +15,13 @@
       "when": 1793292172349,
       "tag": "0001_phase1_roles_services_booking_debts",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1793330890082,
+      "tag": "0002_customers_debts_cancel_notify_public_search",
+      "breakpoints": true
     }
   ]
 }

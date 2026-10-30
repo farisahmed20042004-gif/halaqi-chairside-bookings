@@ -99,6 +99,7 @@ export type Database = {
           created_at: string
           days_off: number[]
           id: string
+          is_public: boolean
           open_time: string
           owner_id: string
           shop_name: string
@@ -114,6 +115,7 @@ export type Database = {
           created_at?: string
           days_off?: number[]
           id?: string
+          is_public?: boolean
           open_time?: string
           owner_id: string
           shop_name: string
@@ -129,6 +131,7 @@ export type Database = {
           created_at?: string
           days_off?: number[]
           id?: string
+          is_public?: boolean
           open_time?: string
           owner_id?: string
           shop_name?: string
@@ -147,6 +150,7 @@ export type Database = {
           customer_name: string
           customer_phone: string | null
           id: string
+          incurred_at: string
           link_code: string | null
           linked_at: string | null
           note: string | null
@@ -160,6 +164,7 @@ export type Database = {
           customer_name: string
           customer_phone?: string | null
           id?: string
+          incurred_at?: string
           link_code?: string | null
           linked_at?: string | null
           note?: string | null
@@ -173,6 +178,7 @@ export type Database = {
           customer_name?: string
           customer_phone?: string | null
           id?: string
+          incurred_at?: string
           link_code?: string | null
           linked_at?: string | null
           note?: string | null
@@ -183,6 +189,53 @@ export type Database = {
             columns: ["barber_id"]
             isOneToOne: false
             referencedRelation: "barbers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      notifications: {
+        Row: {
+          appointment_id: string | null
+          body: string | null
+          created_at: string
+          id: string
+          kind: string
+          read_at: string | null
+          starts_at: string | null
+          timezone: string | null
+          title: string
+          user_id: string
+        }
+        Insert: {
+          appointment_id?: string | null
+          body?: string | null
+          created_at?: string
+          id?: string
+          kind: string
+          read_at?: string | null
+          starts_at?: string | null
+          timezone?: string | null
+          title: string
+          user_id: string
+        }
+        Update: {
+          appointment_id?: string | null
+          body?: string | null
+          created_at?: string
+          id?: string
+          kind?: string
+          read_at?: string | null
+          starts_at?: string | null
+          timezone?: string | null
+          title?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "notifications_appointment_id_fkey"
+            columns: ["appointment_id"]
+            isOneToOne: false
+            referencedRelation: "appointments"
             referencedColumns: ["id"]
           },
         ]
@@ -358,6 +411,7 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      ar_normalize: { Args: { t: string }; Returns: string }
       assert_bookable_slot: {
         Args: {
           p_barber: Database["public"]["Tables"]["barbers"]["Row"]
@@ -462,6 +516,22 @@ export type Database = {
           shop_name: string
         }[]
       }
+      get_public_shop: {
+        Args: { p_barber_id: string }
+        Returns: {
+          address: string
+          area: string
+          barber_name: string
+          close_time: string
+          days_off: number[]
+          id: string
+          is_public: boolean
+          open_time: string
+          shop_name: string
+          slot_minutes: number
+          timezone: string
+        }[]
+      }
       get_shop_services: {
         Args: { p_barber_id: string }
         Returns: {
@@ -511,6 +581,22 @@ export type Database = {
           isOneToOne: true
           isSetofReturn: false
         }
+      }
+      search_public_shops: {
+        Args: { p_query?: string }
+        Returns: {
+          address: string
+          area: string
+          barber_name: string
+          close_time: string
+          days_off: number[]
+          id: string
+          open_time: string
+          services: Json
+          shop_name: string
+          slot_minutes: number
+          timezone: string
+        }[]
       }
     }
     Enums: {
