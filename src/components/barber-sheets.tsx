@@ -9,20 +9,32 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { supabase } from "@/integrations/supabase/client";
 import {
-  SERVICES,
   addDaysKey,
   formatDayKey,
   formatMoney,
+  formatNumber,
   formatTime,
   relativeDayLabel,
+  timeKey,
   todayKey,
   weekdayOfKey,
+  zonedToUtcIso,
 } from "@/lib/format";
-import { bookAppointment, slotsQuery, type AppointmentStatus, type Debt, type Shop } from "@/lib/halaqi-api";
+import {
+  bookAppointment,
+  shopServicesQuery,
+  slotsQuery,
+  type AppointmentStatus,
+  type Debt,
+  type Shop,
+  type ShopCustomer,
+  type ShopService,
+} from "@/lib/halaqi-api";
 import { arabicError, sumPaid } from "@/lib/rules";
 import { cn } from "@/lib/utils";
 
-const digitsOnly = (v: string) => v.replace(/[^\d٠-٩]/g, "").replace(/[٠-٩]/g, (d) => String("٠١٢٣٤٥٦٧٨٩".indexOf(d)));
+export const digitsOnly = (v: string) =>
+  v.replace(/[^\d٠-٩]/g, "").replace(/[٠-٩]/g, (d) => String("٠١٢٣٤٥٦٧٨٩".indexOf(d)));
 
 export function useSetAppointmentStatus(shopId: string) {
   const qc = useQueryClient();
@@ -34,13 +46,24 @@ export function useSetAppointmentStatus(shopId: string) {
     onSuccess: (_d, v) => {
       toast.success(v.status === "completed" ? "تم تسجيل الموعد كمكتمل" : "أُلغي الموعد وأصبح الوقت متاحاً");
       qc.invalidateQueries({ queryKey: ["shop-appointments", shopId] });
+      qc.invalidateQueries({ queryKey: ["client-profile", shopId] });
       qc.invalidateQueries({ queryKey: ["slots", shopId] });
     },
     onError: (e) => toast.error(arabicError(e)),
   });
 }
 
-export function DayPicker({ shop, value, onChange, days = 7 }: { shop: Shop; value: string; onChange: (k: string) => void; days?: number }) {
+export function DayPicker({
+  shop,
+  value,
+  onChange,
+  days = 7,
+}: {
+  shop: Pick<Shop, "timezone" | "days_off">;
+  value: string;
+  onChange: (k: string) => void;
+  days?: number;
+}) {
   const today = todayKey(shop.timezone);
   const keys = Array.from({ length: days }, (_, i) => addDaysKey(today, i));
   return (
@@ -64,6 +87,42 @@ export function DayPicker({ shop, value, onChange, days = 7 }: { shop: Shop; val
           </button>
         );
       })}
+    </div>
+  );
+}
+
+export function ServicePicker({
+  services,
+  value,
+  onChange,
+}: {
+  services: ShopService[];
+  value: string;
+  onChange: (id: string) => void;
+}) {
+  if (services.length === 0) {
+    return <p className="rounded-xl bg-muted px-3 py-3 text-sm text-muted-foreground">لا توجد خدمات متاحة للحجز في هذا المحل بعد.</p>;
+  }
+  return (
+    <div className="grid gap-2">
+      {services.map((s) => (
+        <button
+          key={s.id}
+          type="button"
+          onClick={() => onChange(s.id)}
+          aria-pressed={value === s.id}
+          className={cn(
+            "flex items-center justify-between gap-3 rounded-xl border px-4 py-3 text-start transition",
+            value === s.id ? "border-primary bg-primary text-primary-foreground" : "bg-card",
+          )}
+        >
+          <span>
+            <span className="block font-semibold">{s.name}</span>
+            <span className="text-xs opacity-80">{formatNumber(s.duration_minutes)} دقيقة</span>
+          </span>
+          <span className="font-bold">{formatMoney(s.price)}</span>
+        </button>
+      ))}
     </div>
   );
 }
@@ -119,14 +178,17 @@ export function SlotGrid({
 
 export function NewAppointmentSheet({ shop, open, onClose }: { shop: Shop; open: boolean; onClose: () => void }) {
   const qc = useQueryClient();
+  const { data: allServices = [] } = useQuery({ ...shopServicesQuery(shop.id), enabled: open });
+  const services = allServices.filter((s) => s.is_active);
   const [day, setDay] = useState(() => todayKey(shop.timezone));
   const [startsAt, setStartsAt] = useState("");
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
-  const [service, setService] = useState<string>(SERVICES[0]);
+  const [serviceId, setServiceId] = useState("");
 
   const book = useMutation({
-    mutationFn: () => bookAppointment({ barberId: shop.id, startsAt, service, name: name.trim(), phone: phone.trim() || undefined }),
+    mutationFn: () =>
+      bookAppointment({ barberId: shop.id, serviceId, startsAt, name: name.trim(), phone: phone.trim() || undefined }),
     onSuccess: () => {
       toast.success("حُفظ الموعد");
       qc.invalidateQueries({ queryKey: ["shop-appointments", shop.id] });
@@ -150,7 +212,13 @@ export function NewAppointmentSheet({ shop, open, onClose }: { shop: Shop; open:
       title="موعد جديد"
       description="لزبون حضر أو اتصل هاتفياً."
       footer={
-        <Button variant="ink" size="lg" className="w-full" disabled={!startsAt || name.trim().length < 2 || book.isPending} onClick={() => book.mutate()}>
+        <Button
+          variant="ink"
+          size="lg"
+          className="w-full"
+          disabled={!startsAt || !serviceId || name.trim().length < 2 || book.isPending}
+          onClick={() => book.mutate()}
+        >
           {book.isPending ? <Loader2 className="animate-spin" /> : <Plus />} حفظ الموعد
         </Button>
       }
@@ -161,17 +229,26 @@ export function NewAppointmentSheet({ shop, open, onClose }: { shop: Shop; open:
       </div>
       <div className="space-y-2">
         <Label htmlFor="appt-phone">الهاتف (اختياري)</Label>
-        <Input id="appt-phone" dir="ltr" inputMode="tel" className="h-12 text-right text-base" value={phone} onChange={(e) => setPhone(e.target.value)} maxLength={20} />
+        <Input
+          id="appt-phone"
+          dir="ltr"
+          inputMode="tel"
+          className="h-12 text-right text-base"
+          value={phone}
+          onChange={(e) => setPhone(e.target.value)}
+          maxLength={20}
+        />
       </div>
       <div className="space-y-2">
         <Label>الخدمة</Label>
-        <div className="flex flex-wrap gap-2">
-          {SERVICES.map((s) => (
-            <Chip key={s} active={service === s} onClick={() => setService(s)}>
-              {s}
-            </Chip>
-          ))}
-        </div>
+        <ServicePicker
+          services={services}
+          value={serviceId}
+          onChange={(id) => {
+            setServiceId(id);
+            setStartsAt("");
+          }}
+        />
       </div>
       <div className="space-y-2">
         <Label>اليوم</Label>
@@ -186,22 +263,51 @@ export function NewAppointmentSheet({ shop, open, onClose }: { shop: Shop; open:
       </div>
       <div className="space-y-2">
         <Label>الوقت — {relativeDayLabel(day, shop.timezone)}</Label>
-        <SlotGrid barberId={shop.id} timezone={shop.timezone} day={day} value={startsAt} onChange={setStartsAt} />
+        <SlotGrid barberId={shop.id} serviceId={serviceId} timezone={shop.timezone} day={day} value={startsAt} onChange={setStartsAt} />
       </div>
     </BottomSheet>
   );
 }
 
-export function NewDebtSheet({ shop, open, onClose }: { shop: Shop; open: boolean; onClose: () => void }) {
+/**
+ * Record a debt. With `customer`, the debt is attached to that customer's account
+ * and shows in their app right away; without it, it gets a one-time link code.
+ */
+export function NewDebtSheet({
+  shop,
+  customer,
+  open,
+  onClose,
+}: {
+  shop: Shop;
+  customer?: ShopCustomer | undefined;
+  open: boolean;
+  onClose: () => void;
+}) {
   const qc = useQueryClient();
+  const tz = shop.timezone;
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
   const [amount, setAmount] = useState("");
   const [paid, setPaid] = useState("");
   const [note, setNote] = useState("");
+  const [date, setDate] = useState(() => todayKey(tz));
+  const [time, setTime] = useState(() => timeKey(new Date(), tz));
   const amountNum = Number(amount || 0);
   const paidNum = Number(paid || 0);
-  const valid = name.trim().length >= 2 && amountNum > 0 && paidNum <= amountNum;
+  const incurredAt = date && time ? zonedToUtcIso(date, time, tz) : "";
+  const inFuture = !!incurredAt && new Date(incurredAt).getTime() > Date.now() + 5 * 60_000;
+  const valid = (customer || name.trim().length >= 2) && amountNum > 0 && paidNum <= amountNum && !!incurredAt && !inFuture;
+
+  const reset = () => {
+    setName("");
+    setPhone("");
+    setAmount("");
+    setPaid("");
+    setNote("");
+    setDate(todayKey(tz));
+    setTime(timeKey(new Date(), tz));
+  };
 
   const save = useMutation({
     mutationFn: async () => {
@@ -209,10 +315,12 @@ export function NewDebtSheet({ shop, open, onClose }: { shop: Shop; open: boolea
         .from("debts")
         .insert({
           barber_id: shop.id,
-          customer_name: name.trim(),
-          customer_phone: phone.trim() || null,
+          customer_id: customer?.customer_id ?? null,
+          customer_name: customer ? customer.display_name : name.trim(),
+          customer_phone: customer ? customer.phone : phone.trim() || null,
           amount: amountNum,
           note: note.trim() || null,
+          incurred_at: incurredAt,
         })
         .select("id")
         .single();
@@ -223,54 +331,109 @@ export function NewDebtSheet({ shop, open, onClose }: { shop: Shop; open: boolea
       }
     },
     onSuccess: () => {
-      toast.success("حُفظ الدين");
-      setName("");
-      setPhone("");
-      setAmount("");
-      setPaid("");
-      setNote("");
+      toast.success(customer ? "حُفظ الدين وظهر في حساب الزبون" : "حُفظ الدين");
+      reset();
       onClose();
     },
     onError: (e) =>
-      toast.error(e instanceof Error && e.message === "PAYMENT_FAILED" ? "حُفظ الدين لكن لم تُحفظ الدفعة. سجّلها من صفحة الديون." : arabicError(e)),
-    onSettled: () => qc.invalidateQueries({ queryKey: ["shop-debts", shop.id] }),
+      toast.error(
+        e instanceof Error && e.message === "PAYMENT_FAILED" ? "حُفظ الدين لكن لم تُحفظ الدفعة. سجّلها من صفحة الديون." : arabicError(e),
+      ),
+    onSettled: () => {
+      qc.invalidateQueries({ queryKey: ["shop-debts", shop.id] });
+      qc.invalidateQueries({ queryKey: ["client-profile", shop.id] });
+    },
   });
 
   return (
     <BottomSheet
       open={open}
       onClose={onClose}
-      title="تسجيل دين"
-      description="المبلغ المستحق وما دفعه الزبون الآن."
+      title="إضافة دين"
+      description={customer ? `على ${customer.display_name} — يظهر في حسابه فوراً.` : "المبلغ المستحق وما دفعه الزبون الآن."}
       footer={
         <Button variant="ink" size="lg" className="w-full" disabled={!valid || save.isPending} onClick={() => save.mutate()}>
-          {save.isPending ? <Loader2 className="animate-spin" /> : <HandCoins />} حفظ
+          {save.isPending ? <Loader2 className="animate-spin" /> : <HandCoins />} حفظ الدين
         </Button>
       }
     >
-      <div className="space-y-2">
-        <Label htmlFor="debt-name">اسم الزبون</Label>
-        <Input id="debt-name" className="h-12 text-base" value={name} onChange={(e) => setName(e.target.value)} maxLength={80} />
-      </div>
-      <div className="space-y-2">
-        <Label htmlFor="debt-phone">الهاتف (اختياري)</Label>
-        <Input id="debt-phone" dir="ltr" inputMode="tel" className="h-12 text-right text-base" value={phone} onChange={(e) => setPhone(e.target.value)} maxLength={20} />
-      </div>
+      {!customer && (
+        <>
+          <div className="space-y-2">
+            <Label htmlFor="debt-name">اسم الزبون</Label>
+            <Input id="debt-name" className="h-12 text-base" value={name} onChange={(e) => setName(e.target.value)} maxLength={80} />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="debt-phone">الهاتف (اختياري)</Label>
+            <Input
+              id="debt-phone"
+              dir="ltr"
+              inputMode="tel"
+              className="h-12 text-right text-base"
+              value={phone}
+              onChange={(e) => setPhone(e.target.value)}
+              maxLength={20}
+            />
+          </div>
+        </>
+      )}
       <div className="grid grid-cols-2 gap-3">
         <div className="space-y-2">
           <Label htmlFor="debt-amount">المبلغ الكلي (د.ع)</Label>
-          <Input id="debt-amount" inputMode="numeric" dir="ltr" className="h-12 text-right text-base" value={amount} onChange={(e) => setAmount(digitsOnly(e.target.value).slice(0, 9))} placeholder="15000" />
+          <Input
+            id="debt-amount"
+            inputMode="numeric"
+            dir="ltr"
+            className="h-12 text-right text-base"
+            value={amount}
+            onChange={(e) => setAmount(digitsOnly(e.target.value).slice(0, 9))}
+            placeholder="15000"
+          />
         </div>
         <div className="space-y-2">
           <Label htmlFor="debt-paid">المدفوع الآن</Label>
-          <Input id="debt-paid" inputMode="numeric" dir="ltr" className="h-12 text-right text-base" value={paid} onChange={(e) => setPaid(digitsOnly(e.target.value).slice(0, 9))} placeholder="0" />
+          <Input
+            id="debt-paid"
+            inputMode="numeric"
+            dir="ltr"
+            className="h-12 text-right text-base"
+            value={paid}
+            onChange={(e) => setPaid(digitsOnly(e.target.value).slice(0, 9))}
+            placeholder="0"
+          />
         </div>
       </div>
       {paidNum > amountNum && amountNum > 0 && <p className="text-xs text-destructive">المدفوع لا يمكن أن يتجاوز المبلغ الكلي.</p>}
       <div className="space-y-2">
-        <Label htmlFor="debt-note">ملاحظة (اختياري)</Label>
-        <Input id="debt-note" className="h-12 text-base" value={note} onChange={(e) => setNote(e.target.value)} maxLength={200} placeholder="مثال: قص + ذقن" />
+        <Label htmlFor="debt-note">الوصف (اختياري)</Label>
+        <Input
+          id="debt-note"
+          className="h-12 text-base"
+          value={note}
+          onChange={(e) => setNote(e.target.value)}
+          maxLength={200}
+          placeholder="مثال: قص + ذقن"
+        />
       </div>
+      <div className="grid grid-cols-2 gap-3">
+        <div className="space-y-2">
+          <Label htmlFor="debt-date">التاريخ</Label>
+          <Input
+            id="debt-date"
+            type="date"
+            dir="ltr"
+            className="h-12 text-base"
+            max={todayKey(tz)}
+            value={date}
+            onChange={(e) => setDate(e.target.value)}
+          />
+        </div>
+        <div className="space-y-2">
+          <Label htmlFor="debt-time">الوقت</Label>
+          <Input id="debt-time" type="time" dir="ltr" className="h-12 text-base" value={time} onChange={(e) => setTime(e.target.value)} />
+        </div>
+      </div>
+      {inFuture && <p className="text-xs text-destructive">لا يمكن تسجيل دين بتاريخ أو وقت لم يأتِ بعد.</p>}
     </BottomSheet>
   );
 }
@@ -288,12 +451,15 @@ export function PaymentSheet({ shop, debt, onClose }: { shop: Shop; debt: Debt |
       if (error) throw error;
     },
     onSuccess: () => {
-      toast.success("حُفظت الدفعة");
+      toast.success(value === remaining ? "سُدّد الدين بالكامل" : "حُفظت الدفعة");
       setAmount("");
       onClose();
     },
     onError: (e) => toast.error(arabicError(e)),
-    onSettled: () => qc.invalidateQueries({ queryKey: ["shop-debts", shop.id] }),
+    onSettled: () => {
+      qc.invalidateQueries({ queryKey: ["shop-debts", shop.id] });
+      qc.invalidateQueries({ queryKey: ["client-profile", shop.id] });
+    },
   });
 
   return (
@@ -306,14 +472,27 @@ export function PaymentSheet({ shop, debt, onClose }: { shop: Shop; debt: Debt |
       title="تسجيل دفعة"
       description={debt ? `${debt.customer_name} — المتبقي ${formatMoney(remaining)}` : ""}
       footer={
-        <Button variant="success" size="lg" className="w-full" disabled={value <= 0 || value > remaining || pay.isPending} onClick={() => pay.mutate()}>
+        <Button
+          variant="success"
+          size="lg"
+          className="w-full"
+          disabled={value <= 0 || value > remaining || pay.isPending}
+          onClick={() => pay.mutate()}
+        >
           {pay.isPending ? <Loader2 className="animate-spin" /> : <HandCoins />} حفظ الدفعة
         </Button>
       }
     >
       <div className="space-y-2">
         <Label htmlFor="pay-amount">المبلغ المدفوع (د.ع)</Label>
-        <Input id="pay-amount" inputMode="numeric" dir="ltr" className="h-12 text-right text-base" value={amount} onChange={(e) => setAmount(digitsOnly(e.target.value).slice(0, 9))} />
+        <Input
+          id="pay-amount"
+          inputMode="numeric"
+          dir="ltr"
+          className="h-12 text-right text-base"
+          value={amount}
+          onChange={(e) => setAmount(digitsOnly(e.target.value).slice(0, 9))}
+        />
         <div className="flex gap-2">
           <Chip active={value === remaining} onClick={() => setAmount(String(remaining))}>
             المبلغ كاملاً
