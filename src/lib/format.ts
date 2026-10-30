@@ -53,4 +53,37 @@ export function relativeDayLabel(key: string, tz: string) {
 
 export const WEEKDAYS = ["الأحد", "الاثنين", "الثلاثاء", "الأربعاء", "الخميس", "الجمعة", "السبت"] as const;
 
-export const SERVICES = ["قص شعر", "حلاقة ذقن", "قص + ذقن", "تنظيف بشرة"] as const;
+/** "HH:MM" (24h) of an instant, as seen in `tz`. */
+export function timeKey(instant: Date | string, tz: string) {
+  return new Intl.DateTimeFormat("en-GB", { timeZone: tz, hour: "2-digit", minute: "2-digit", hourCycle: "h23" }).format(new Date(instant));
+}
+
+/** The instant (ISO, UTC) of a wall-clock date + time in `tz`. */
+export function zonedToUtcIso(key: string, time: string, tz: string) {
+  const [y, m, d] = key.split("-").map(Number) as [number, number, number];
+  const [h, mi] = time.split(":").map(Number) as [number, number];
+  const wall = Date.UTC(y, m - 1, d, h, mi);
+  const offsetAt = (t: number) => {
+    const parts = new Intl.DateTimeFormat("en-US", {
+      timeZone: tz,
+      hourCycle: "h23",
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+      hour: "2-digit",
+      minute: "2-digit",
+      second: "2-digit",
+    }).formatToParts(new Date(t));
+    const g = (k: string) => Number(parts.find((p) => p.type === k)?.value);
+    return Date.UTC(g("year"), g("month") - 1, g("day"), g("hour"), g("minute"), g("second")) - t;
+  };
+  let t = wall - offsetAt(wall);
+  t = wall - offsetAt(t);
+  return new Date(t).toISOString();
+}
+
+/** "10:00" → "١٠:٠٠ ص" style label for a wall-clock time. */
+export function formatClock(time: string) {
+  const [h, m] = time.split(":").map(Number) as [number, number];
+  return new Intl.DateTimeFormat("ar-IQ", { timeZone: "UTC", hour: "numeric", minute: "2-digit" }).format(new Date(Date.UTC(2000, 0, 1, h, m)));
+}
