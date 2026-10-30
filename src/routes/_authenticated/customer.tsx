@@ -5,20 +5,20 @@ import { CalendarCheck, KeyRound, Loader2, LogOut, MapPin, Scissors } from "luci
 import { toast } from "sonner";
 
 import { AppointmentStatusBadge, Chip, EmptyState, MobileFrame, PageHeader } from "@/components/app-ui";
-import { DayPicker, SlotGrid } from "@/components/barber-sheets";
+import { DayPicker, ServicePicker, SlotGrid } from "@/components/barber-sheets";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useSignOut } from "@/hooks/use-session";
 import { supabase } from "@/integrations/supabase/client";
-import { SERVICES, dayKey, formatDayKey, formatTime, relativeDayLabel, todayKey } from "@/lib/format";
+import { dayKey, formatDayKey, formatTime, relativeDayLabel, todayKey } from "@/lib/format";
 import {
   barberByCodeQuery,
   bookAppointment,
   myAppointmentsQuery,
   profileQuery,
+  publicServicesQuery,
   type PublicBarber,
-  type Shop,
 } from "@/lib/halaqi-api";
 import { arabicError, normalizeCode } from "@/lib/rules";
 
@@ -171,13 +171,15 @@ function BookingForm({ barber }: { barber: PublicBarber }) {
   const tz = barber.timezone;
   const [day, setDay] = useState(() => todayKey(tz));
   const [startsAt, setStartsAt] = useState("");
-  const [service, setService] = useState<string>(SERVICES[0]);
+  const { data: services = [] } = useQuery(publicServicesQuery(barber.id));
+  const [serviceId, setServiceId] = useState("");
+  const service = services.find((s) => s.id === serviceId)?.name ?? "";
   const [name, setName] = useState(profile?.full_name ?? "");
   const [phone, setPhone] = useState(profile?.phone ?? "");
   const [done, setDone] = useState<{ startsAt: string; service: string } | null>(null);
 
   const book = useMutation({
-    mutationFn: () => bookAppointment({ barberId: barber.id, startsAt, service, name: name.trim(), phone: phone.trim() || undefined }),
+    mutationFn: () => bookAppointment({ barberId: barber.id, startsAt, serviceId, name: name.trim(), phone: phone.trim() || undefined }),
     onSuccess: () => {
       setDone({ startsAt, service });
       setStartsAt("");
@@ -190,8 +192,7 @@ function BookingForm({ barber }: { barber: PublicBarber }) {
     onSettled: () => qc.invalidateQueries({ queryKey: ["slots", barber.id] }),
   });
 
-  // DayPicker only needs the public scheduling fields.
-  const shopLike = { id: barber.id, timezone: tz, days_off: barber.days_off } as Shop;
+  const shopLike = { timezone: tz, days_off: barber.days_off };
 
   if (done) {
     return (
@@ -238,13 +239,14 @@ function BookingForm({ barber }: { barber: PublicBarber }) {
 
         <section>
           <h2 className="mb-2 text-base font-bold">الخدمة</h2>
-          <div className="flex flex-wrap gap-2">
-            {SERVICES.map((s) => (
-              <Chip key={s} active={service === s} onClick={() => setService(s)}>
-                {s}
-              </Chip>
-            ))}
-          </div>
+          <ServicePicker
+            services={services}
+            value={serviceId}
+            onChange={(id) => {
+              setServiceId(id);
+              setStartsAt("");
+            }}
+          />
         </section>
 
         <section>
@@ -262,7 +264,7 @@ function BookingForm({ barber }: { barber: PublicBarber }) {
 
         <section>
           <h2 className="mb-2 text-base font-bold">الأوقات المتاحة — {relativeDayLabel(day, tz)}</h2>
-          <SlotGrid barberId={barber.id} timezone={tz} day={day} value={startsAt} onChange={setStartsAt} />
+          <SlotGrid barberId={barber.id} serviceId={serviceId} timezone={tz} day={day} value={startsAt} onChange={setStartsAt} />
         </section>
 
         <section className="space-y-3">
@@ -284,7 +286,7 @@ function BookingForm({ barber }: { barber: PublicBarber }) {
             variant="brass"
             size="xl"
             className="w-full"
-            disabled={!startsAt || name.trim().length < 2 || book.isPending}
+            disabled={!startsAt || !serviceId || name.trim().length < 2 || book.isPending}
             onClick={() => book.mutate()}
           >
             {book.isPending && <Loader2 className="animate-spin" />}

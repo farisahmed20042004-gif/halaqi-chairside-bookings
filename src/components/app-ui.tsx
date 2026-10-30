@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link, useRouterState } from "@tanstack/react-router";
-import { ArrowRight, Bell, CalendarDays, Home, LayoutDashboard, Loader2, Users, Wallet } from "lucide-react";
+import { ArrowRight, Bell, CalendarDays, LayoutDashboard, Loader2, Wallet } from "lucide-react";
 import { useState, type ReactNode } from "react";
 
 import {
@@ -35,7 +35,7 @@ export function PageHeader({
 }: {
   title: string;
   subtitle?: string | undefined;
-  backTo?: "/" | "/barber" | "/customer" | "/clients";
+  backTo?: "/" | "/barber" | "/customer";
   action?: ReactNode;
 }) {
   return (
@@ -70,28 +70,20 @@ export function LoadingScreen({ label = "جارٍ التحميل…" }: { label?
 const barberNavItems = [
   { to: "/barber", label: "الرئيسية", icon: LayoutDashboard },
   { to: "/appointments", label: "المواعيد", icon: CalendarDays },
-  { to: "/clients", label: "الزبائن", icon: Users },
   { to: "/debts", label: "الديون", icon: Wallet },
 ] as const;
 
-const customerNavItems = [
-  { to: "/customer", label: "الرئيسية", icon: Home },
-  { to: "/my-debts", label: "ديوني", icon: Wallet },
-] as const;
 
 export function BarberNav() {
   return <BottomNav items={barberNavItems} />;
 }
 
-export function CustomerNav() {
-  return <BottomNav items={customerNavItems} />;
-}
 
-function BottomNav({ items }: { items: typeof barberNavItems | typeof customerNavItems }) {
+function BottomNav({ items }: { items: typeof barberNavItems }) {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   return (
     <nav className="fixed inset-x-0 bottom-0 z-30 border-t bg-card/95 backdrop-blur pb-safe">
-      <ul className={cn("mx-auto grid max-w-md", items.length === 4 ? "grid-cols-4" : "grid-cols-2")}>
+      <ul className={cn("mx-auto grid max-w-md", "grid-cols-3")}>
         {items.map(({ to, label, icon: Icon }) => {
           const active = pathname === to || pathname.startsWith(`${to}/`);
           return (
