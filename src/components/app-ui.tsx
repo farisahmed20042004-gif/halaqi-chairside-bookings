@@ -1,10 +1,21 @@
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link, useRouterState } from "@tanstack/react-router";
-import { ArrowRight, CalendarDays, LayoutDashboard, Loader2, Wallet } from "lucide-react";
-import type { ReactNode } from "react";
+import { ArrowRight, Bell, CalendarDays, Home, LayoutDashboard, Loader2, Users, Wallet } from "lucide-react";
+import { useState, type ReactNode } from "react";
 
+import {
+  AlertDialog,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetDescription, SheetFooter, SheetHeader, SheetTitle } from "@/components/ui/sheet";
-import { formatNumber } from "@/lib/format";
-import type { AppointmentStatus } from "@/lib/halaqi-api";
+import { dayKey, formatDayKey, formatNumber, formatTime } from "@/lib/format";
+import { markNotificationsRead, notificationsQuery, type AppointmentStatus } from "@/lib/halaqi-api";
 import type { DebtStatus } from "@/lib/rules";
 import { cn } from "@/lib/utils";
 
@@ -24,7 +35,7 @@ export function PageHeader({
 }: {
   title: string;
   subtitle?: string | undefined;
-  backTo?: "/" | "/barber" | "/customer";
+  backTo?: "/" | "/barber" | "/customer" | "/clients";
   action?: ReactNode;
 }) {
   return (
@@ -56,19 +67,33 @@ export function LoadingScreen({ label = "جارٍ التحميل…" }: { label?
   );
 }
 
-const navItems = [
+const barberNavItems = [
   { to: "/barber", label: "الرئيسية", icon: LayoutDashboard },
   { to: "/appointments", label: "المواعيد", icon: CalendarDays },
+  { to: "/clients", label: "الزبائن", icon: Users },
   { to: "/debts", label: "الديون", icon: Wallet },
 ] as const;
 
+const customerNavItems = [
+  { to: "/customer", label: "الرئيسية", icon: Home },
+  { to: "/my-debts", label: "ديوني", icon: Wallet },
+] as const;
+
 export function BarberNav() {
+  return <BottomNav items={barberNavItems} />;
+}
+
+export function CustomerNav() {
+  return <BottomNav items={customerNavItems} />;
+}
+
+function BottomNav({ items }: { items: typeof barberNavItems | typeof customerNavItems }) {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   return (
     <nav className="fixed inset-x-0 bottom-0 z-30 border-t bg-card/95 backdrop-blur pb-safe">
-      <ul className="mx-auto grid max-w-md grid-cols-3">
-        {navItems.map(({ to, label, icon: Icon }) => {
-          const active = pathname === to;
+      <ul className={cn("mx-auto grid max-w-md", items.length === 4 ? "grid-cols-4" : "grid-cols-2")}>
+        {items.map(({ to, label, icon: Icon }) => {
+          const active = pathname === to || pathname.startsWith(`${to}/`);
           return (
             <li key={to}>
               <Link
@@ -216,5 +241,101 @@ export function BottomSheet({
         <SheetFooter>{footer}</SheetFooter>
       </SheetContent>
     </Sheet>
+  );
+}
+
+export function ConfirmDialog({
+  open,
+  onOpenChange,
+  title,
+  description,
+  confirmLabel,
+  cancelLabel = "تراجع",
+  pending,
+  onConfirm,
+}: {
+  open: boolean;
+  onOpenChange: (o: boolean) => void;
+  title: string;
+  description?: ReactNode;
+  confirmLabel: string;
+  cancelLabel?: string;
+  pending?: boolean;
+  onConfirm: () => void;
+}) {
+  return (
+    <AlertDialog open={open} onOpenChange={onOpenChange}>
+      <AlertDialogContent dir="rtl" className="max-w-sm rounded-2xl">
+        <AlertDialogHeader className="text-right sm:text-right">
+          <AlertDialogTitle className="font-display text-xl">{title}</AlertDialogTitle>
+          {description && <AlertDialogDescription className="text-right">{description}</AlertDialogDescription>}
+        </AlertDialogHeader>
+        <AlertDialogFooter className="flex-col gap-2 sm:flex-col sm:space-x-0">
+          <Button variant="destructive" size="lg" className="w-full" disabled={pending} onClick={onConfirm}>
+            {pending && <Loader2 className="animate-spin" />}
+            {confirmLabel}
+          </Button>
+          <AlertDialogCancel className="mt-0 h-11 w-full">{cancelLabel}</AlertDialogCancel>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
+  );
+}
+
+/** In-app notifications (cancellations). Shown inside the app only, not as phone push alerts. */
+export function NotificationsBell({ tone = "light" }: { tone?: "light" | "dark" }) {
+  const qc = useQueryClient();
+  const [open, setOpen] = useState(false);
+  const { data = [] } = useQuery(notificationsQuery());
+  const unread = data.filter((n) => !n.read_at);
+  const markRead = useMutation({
+    mutationFn: () => markNotificationsRead(unread.map((n) => n.id)),
+    onSettled: () => qc.invalidateQueries({ queryKey: ["notifications"] }),
+  });
+  return (
+    <>
+      <button
+        type="button"
+        aria-label={unread.length ? `الإشعارات، ${formatNumber(unread.length)} جديدة` : "الإشعارات"}
+        onClick={() => {
+          setOpen(true);
+          if (unread.length) markRead.mutate();
+        }}
+        className={cn(
+          "relative flex shrink-0 items-center justify-center rounded-full",
+          tone === "dark" ? "size-9 bg-ink-foreground/10" : "size-10 border bg-card",
+        )}
+      >
+        <Bell className="size-4" />
+        {unread.length > 0 && (
+          <span className="absolute -end-1 -top-1 flex min-w-5 items-center justify-center rounded-full bg-destructive px-1 text-[11px] font-bold text-destructive-foreground">
+            {formatNumber(unread.length)}
+          </span>
+        )}
+      </button>
+      <BottomSheet open={open} onClose={() => setOpen(false)} title="الإشعارات" footer={null}>
+        {data.length === 0 ? (
+          <EmptyState title="لا إشعارات" hint="ستظهر هنا إشعارات إلغاء المواعيد." />
+        ) : (
+          <ul className="space-y-2">
+            {data.map((n) => (
+              <li key={n.id} className={cn("rounded-2xl border p-3.5", n.read_at ? "bg-card" : "border-brass/50 bg-accent/40")}>
+                <p className="font-semibold">{n.title}</p>
+                {n.body && <p className="text-sm text-muted-foreground">{n.body}</p>}
+                {n.starts_at && n.timezone && (
+                  <p className="mt-1 text-sm">
+                    موعد {formatDayKey(dayKey(n.starts_at, n.timezone))} · {formatTime(n.starts_at, n.timezone)}
+                  </p>
+                )}
+                <p className="mt-1 text-[11px] text-muted-foreground">
+                  {formatDayKey(dayKey(n.created_at, n.timezone ?? "Asia/Baghdad"), { day: "numeric", month: "short" })} ·{" "}
+                  {formatTime(n.created_at, n.timezone ?? "Asia/Baghdad")}
+                </p>
+              </li>
+            ))}
+          </ul>
+        )}
+      </BottomSheet>
+    </>
   );
 }
