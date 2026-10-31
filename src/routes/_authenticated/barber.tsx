@@ -6,6 +6,7 @@ import { toast } from "sonner";
 
 import { AppointmentStatusBadge, BarberNav, BottomSheet, DebtStatusBadge, EmptyState, MobileFrame } from "@/components/app-ui";
 import { NewAppointmentSheet, NewDebtSheet, useSetAppointmentStatus } from "@/components/barber-sheets";
+import { ServicesManager } from "@/components/services-manager";
 import { ShopForm } from "@/components/shop-form";
 import { Button } from "@/components/ui/button";
 import { useSignOut } from "@/hooks/use-session";
@@ -139,6 +140,11 @@ function Dashboard({ shop }: { shop: Shop }) {
         </div>
 
         <section>
+          <SectionHead title="خدماتي" to="/services" linkLabel="فتح الصفحة" />
+          <ServicesManager shop={shop} />
+        </section>
+
+        <section>
           <SectionHead title="مواعيد اليوم" to="/appointments" />
           {todays.length === 0 ? (
             <EmptyState title="لا مواعيد اليوم" hint="شارك رمزك مع زبائنك ليحجزوا." />
@@ -244,12 +250,20 @@ function Stat({ label, value, hint, tone }: { label: string; value: string; hint
   );
 }
 
-function SectionHead({ title, to }: { title: string; to: "/appointments" | "/debts" }) {
+function SectionHead({
+  title,
+  to,
+  linkLabel = "عرض الكل",
+}: {
+  title: string;
+  to: "/appointments" | "/debts" | "/services";
+  linkLabel?: string;
+}) {
   return (
     <div className="mb-3 flex items-center justify-between">
       <h2 className="text-lg font-bold">{title}</h2>
       <Link to={to} className="flex items-center text-sm font-medium text-accent-foreground">
-        عرض الكل <ChevronLeft className="size-4" />
+        {linkLabel} <ChevronLeft className="size-4" />
       </Link>
     </div>
   );

@@ -171,7 +171,7 @@ function BookingForm({ barber }: { barber: PublicBarber }) {
   const tz = barber.timezone;
   const [day, setDay] = useState(() => todayKey(tz));
   const [startsAt, setStartsAt] = useState("");
-  const { data: services = [] } = useQuery(publicServicesQuery(barber.id));
+  const { data: services = [], isPending: servicesLoading } = useQuery(publicServicesQuery(barber.id));
   const [serviceId, setServiceId] = useState("");
   const service = services.find((s) => s.id === serviceId)?.name ?? "";
   const [name, setName] = useState(profile?.full_name ?? "");
@@ -238,46 +238,57 @@ function BookingForm({ barber }: { barber: PublicBarber }) {
         </div>
 
         <section>
-          <h2 className="mb-2 text-base font-bold">الخدمة</h2>
-          <ServicePicker
-            services={services}
-            value={serviceId}
-            onChange={(id) => {
-              setServiceId(id);
-              setStartsAt("");
-            }}
-          />
+          <h2 className="mb-1 text-base font-bold">١. اختر الخدمة</h2>
+          <p className="mb-2 text-xs text-muted-foreground">الأسعار بالدينار العراقي، والأوقات تُحسب حسب مدة الخدمة.</p>
+          {servicesLoading ? (
+            <p className="py-4 text-center text-sm text-muted-foreground">جارٍ تحميل الخدمات…</p>
+          ) : services.length === 0 ? (
+            <EmptyState title="لا توجد خدمات للحجز بعد" hint="هذا الحلاق لم يضف خدماته وأسعاره بعد. تواصل معه أو حاول لاحقاً." />
+          ) : (
+            <ServicePicker
+              services={services}
+              value={serviceId}
+              onChange={(id) => {
+                setServiceId(id);
+                setStartsAt("");
+              }}
+            />
+          )}
         </section>
 
-        <section>
-          <h2 className="mb-2 text-base font-bold">اليوم</h2>
-          <DayPicker
-            shop={shopLike}
-            days={14}
-            value={day}
-            onChange={(k) => {
-              setDay(k);
-              setStartsAt("");
-            }}
-          />
-        </section>
+        {serviceId && (
+          <>
+            <section>
+              <h2 className="mb-2 text-base font-bold">٢. اختر اليوم</h2>
+              <DayPicker
+                shop={shopLike}
+                days={14}
+                value={day}
+                onChange={(k) => {
+                  setDay(k);
+                  setStartsAt("");
+                }}
+              />
+            </section>
 
-        <section>
-          <h2 className="mb-2 text-base font-bold">الأوقات المتاحة — {relativeDayLabel(day, tz)}</h2>
-          <SlotGrid barberId={barber.id} serviceId={serviceId} timezone={tz} day={day} value={startsAt} onChange={setStartsAt} />
-        </section>
+            <section>
+              <h2 className="mb-2 text-base font-bold">٣. الأوقات المتاحة — {relativeDayLabel(day, tz)}</h2>
+              <SlotGrid barberId={barber.id} serviceId={serviceId} timezone={tz} day={day} value={startsAt} onChange={setStartsAt} />
+            </section>
 
-        <section className="space-y-3">
-          <h2 className="text-base font-bold">بياناتك</h2>
-          <div className="space-y-2">
-            <Label htmlFor="c-name">الاسم</Label>
-            <Input id="c-name" className="h-12 text-base" value={name} onChange={(e) => setName(e.target.value)} maxLength={80} />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="c-phone">رقم الهاتف (اختياري)</Label>
-            <Input id="c-phone" dir="ltr" inputMode="tel" className="h-12 text-right text-base" value={phone} onChange={(e) => setPhone(e.target.value)} maxLength={20} />
-          </div>
-        </section>
+            <section className="space-y-3">
+              <h2 className="text-base font-bold">بياناتك</h2>
+              <div className="space-y-2">
+                <Label htmlFor="c-name">الاسم</Label>
+                <Input id="c-name" className="h-12 text-base" value={name} onChange={(e) => setName(e.target.value)} maxLength={80} />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="c-phone">رقم الهاتف (اختياري)</Label>
+                <Input id="c-phone" dir="ltr" inputMode="tel" className="h-12 text-right text-base" value={phone} onChange={(e) => setPhone(e.target.value)} maxLength={20} />
+              </div>
+            </section>
+          </>
+        )}
       </div>
 
       <div className="fixed inset-x-0 bottom-0 z-30 border-t bg-card/95 px-4 pt-3 backdrop-blur pb-safe">
@@ -290,7 +301,7 @@ function BookingForm({ barber }: { barber: PublicBarber }) {
             onClick={() => book.mutate()}
           >
             {book.isPending && <Loader2 className="animate-spin" />}
-            {startsAt ? `احجز ${formatTime(startsAt, tz)} — ${relativeDayLabel(day, tz)}` : "اختر وقتاً للحجز"}
+            {!serviceId ? "اختر الخدمة أولاً" : startsAt ? `احجز ${formatTime(startsAt, tz)} — ${relativeDayLabel(day, tz)}` : "اختر وقتاً للحجز"}
           </Button>
         </div>
       </div>

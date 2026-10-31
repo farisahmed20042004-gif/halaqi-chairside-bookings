@@ -15,3 +15,4 @@
 - Screens read and write real backend data; never show invented data as if it were real. Why: the user requires that saving, login, conflict prevention and notifications are never implied before they are built and tested.
 - PWA is manifest-only (`public/manifest.webmanifest`, icons in `public/icons/`, head links in `__root.tsx`); no service worker unless offline support is explicitly requested. Why: installable/APK-ready without stale-cache risk in previews.
 - Layout is mobile-first inside a `max-w-md` frame (`MobileFrame`); barber pages share the bottom `BarberNav`. Why: primary target is Android phone screens.
+- Services are never hard-deleted: "delete" sets `services.deleted_at` (forces `is_active=false`); barber lists filter `deleted_at is null`. Why: past appointments keep their `service_id` link while their name/price snapshot stays unchanged.

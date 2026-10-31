@@ -34,6 +34,10 @@ const messages: Record<string, string> = {
   TOO_MANY_BOOKINGS: "لديك ٣ مواعيد قادمة عند هذا الحلاق. ألغِ أحدها لتحجز جديداً.",
   CANNOT_CANCEL: "لا يمكن إلغاء هذا الموعد.",
   BARBER_NOT_FOUND: "لم نجد هذا الحلاق.",
+  SERVICE_UNAVAILABLE: "هذه الخدمة لم تعد متاحة. اختر خدمة أخرى.",
+  services_name_check: "اسم الخدمة يجب أن يكون بين حرفين و٦٠ حرفاً.",
+  services_price_check: "السعر غير صالح.",
+  services_duration_minutes_check: "المدة يجب أن تكون بين ٥ و٤٨٠ دقيقة.",
   OVERPAYMENT: "المبلغ أكبر من المتبقي على الزبون.",
   NOT_AUTHENTICATED: "يجب تسجيل الدخول أولاً.",
   "Invalid login credentials": "البريد الإلكتروني أو كلمة المرور غير صحيحة.",
@@ -57,4 +61,16 @@ export function arabicError(err: unknown): string {
     if (text.toLowerCase().includes(needle.toLowerCase())) return msg;
   }
   return "حدث خطأ غير متوقع. حاول مرة أخرى.";
+}
+
+/** Limits the database enforces on a service; checked here first to show a clear message. */
+export const SERVICE_LIMITS = { nameMin: 2, nameMax: 60, priceMax: 100_000_000, durationMin: 5, durationMax: 480 } as const;
+
+export function serviceFormError(f: { name: string; price: number; duration: number }): string | null {
+  const name = f.name.trim();
+  if (name.length < SERVICE_LIMITS.nameMin || name.length > SERVICE_LIMITS.nameMax) return "اكتب اسم الخدمة (حرفان على الأقل).";
+  if (!Number.isFinite(f.price) || f.price < 0 || f.price > SERVICE_LIMITS.priceMax) return "اكتب سعراً صحيحاً بالدينار.";
+  if (!Number.isInteger(f.duration) || f.duration < SERVICE_LIMITS.durationMin || f.duration > SERVICE_LIMITS.durationMax)
+    return "المدة يجب أن تكون بين ٥ و٤٨٠ دقيقة.";
+  return null;
 }
