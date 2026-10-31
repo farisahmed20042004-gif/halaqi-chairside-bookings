@@ -116,11 +116,12 @@ export function ServicePicker({
             value === s.id ? "border-primary bg-primary text-primary-foreground" : "bg-card",
           )}
         >
-          <span>
+          <span className="min-w-0">
             <span className="block font-semibold">{s.name}</span>
+            {s.description && <span className="block text-xs opacity-80">{s.description}</span>}
             <span className="text-xs opacity-80">{formatNumber(s.duration_minutes)} دقيقة</span>
           </span>
-          <span className="font-bold">{formatMoney(s.price)}</span>
+          <span className="shrink-0 font-bold">{formatMoney(s.price)}</span>
         </button>
       ))}
     </div>
