@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link, useRouterState } from "@tanstack/react-router";
-import { ArrowRight, Bell, CalendarDays, LayoutDashboard, Loader2, Wallet } from "lucide-react";
+import { ArrowRight, Bell, CalendarDays, LayoutDashboard, Loader2, Scissors, Wallet } from "lucide-react";
 import { useState, type ReactNode } from "react";
 
 import {
@@ -70,20 +70,19 @@ export function LoadingScreen({ label = "جارٍ التحميل…" }: { label?
 const barberNavItems = [
   { to: "/barber", label: "الرئيسية", icon: LayoutDashboard },
   { to: "/appointments", label: "المواعيد", icon: CalendarDays },
+  { to: "/services", label: "خدماتي", icon: Scissors },
   { to: "/debts", label: "الديون", icon: Wallet },
 ] as const;
-
 
 export function BarberNav() {
   return <BottomNav items={barberNavItems} />;
 }
 
-
 function BottomNav({ items }: { items: typeof barberNavItems }) {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   return (
     <nav className="fixed inset-x-0 bottom-0 z-30 border-t bg-card/95 backdrop-blur pb-safe">
-      <ul className={cn("mx-auto grid max-w-md", "grid-cols-3")}>
+      <ul className="mx-auto grid max-w-md grid-cols-4">
         {items.map(({ to, label, icon: Icon }) => {
           const active = pathname === to || pathname.startsWith(`${to}/`);
           return (

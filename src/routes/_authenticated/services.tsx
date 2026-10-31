@@ -4,10 +4,9 @@ import { useSuspenseQuery } from "@tanstack/react-query";
 import { BarberNav, MobileFrame, PageHeader } from "@/components/app-ui";
 import { NoShop } from "@/components/no-shop";
 import { ServicesManager } from "@/components/services-manager";
-import { myShopQuery, requireRole, shopServicesQuery } from "@/lib/halaqi-api";
+import { myShopQuery, shopServicesQuery } from "@/lib/halaqi-api";
 
 export const Route = createFileRoute("/_authenticated/services")({
-  beforeLoad: ({ context }) => requireRole(context.queryClient, "barber"),
   loader: async ({ context }) => {
     const shop = await context.queryClient.ensureQueryData(myShopQuery());
     if (shop) await context.queryClient.ensureQueryData(shopServicesQuery(shop.id));
