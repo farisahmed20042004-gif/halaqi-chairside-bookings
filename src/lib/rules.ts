@@ -62,3 +62,15 @@ export function arabicError(err: unknown): string {
   }
   return "حدث خطأ غير متوقع. حاول مرة أخرى.";
 }
+
+/** Limits the database enforces on a service; checked here first to show a clear message. */
+export const SERVICE_LIMITS = { nameMin: 2, nameMax: 60, priceMax: 100_000_000, durationMin: 5, durationMax: 480 } as const;
+
+export function serviceFormError(f: { name: string; price: number; duration: number }): string | null {
+  const name = f.name.trim();
+  if (name.length < SERVICE_LIMITS.nameMin || name.length > SERVICE_LIMITS.nameMax) return "اكتب اسم الخدمة (حرفان على الأقل).";
+  if (!Number.isFinite(f.price) || f.price < 0 || f.price > SERVICE_LIMITS.priceMax) return "اكتب سعراً صحيحاً بالدينار.";
+  if (!Number.isInteger(f.duration) || f.duration < SERVICE_LIMITS.durationMin || f.duration > SERVICE_LIMITS.durationMax)
+    return "المدة يجب أن تكون بين ٥ و٤٨٠ دقيقة.";
+  return null;
+}
