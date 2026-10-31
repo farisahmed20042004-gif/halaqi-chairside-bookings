@@ -21,7 +21,7 @@ export type Slot = Fns["get_available_slots"]["Returns"][number];
 export type MyAppointment = Fns["get_my_appointments"]["Returns"][number];
 export type MyShop = Fns["get_my_shops"]["Returns"][number];
 export type PublicShop = Fns["get_public_shop"]["Returns"][number];
-export type ShopService = { id: string; name: string; price: number; duration_minutes: number };
+export type ShopService = { id: string; name: string; price: number; duration_minutes: number; description?: string | null };
 export type SearchShop = Omit<Fns["search_public_shops"]["Returns"][number], "services"> & { services: ShopService[] };
 /** The public scheduling details any booking screen needs. */
 export type BookableShop = Pick<
@@ -79,6 +79,7 @@ export const myShopQuery = () =>
     },
   });
 
+/** The barber's own services (active and paused); removed ones are left out. */
 export const shopServicesQuery = (shopId: string) =>
   queryOptions({
     queryKey: ["shop-services", shopId],
@@ -87,12 +88,40 @@ export const shopServicesQuery = (shopId: string) =>
         .from("services")
         .select("*")
         .eq("barber_id", shopId)
+        .is("deleted_at", null)
         .order("sort_order")
         .order("created_at");
       if (error) throw error;
       return data;
     },
   });
+
+export type ServiceInput = { name: string; description: string; price: number; duration_minutes: number };
+
+export async function saveService(shopId: string, input: ServiceInput, id?: string) {
+  const fields = {
+    name: input.name.trim(),
+    description: input.description.trim() || null,
+    price: input.price,
+    duration_minutes: input.duration_minutes,
+  };
+  const q = id
+    ? supabase.from("services").update(fields).eq("id", id).eq("barber_id", shopId)
+    : supabase.from("services").insert({ ...fields, barber_id: shopId });
+  const { error } = await q;
+  if (error) throw error;
+}
+
+export async function setServiceActive(id: string, isActive: boolean) {
+  const { error } = await supabase.from("services").update({ is_active: isActive }).eq("id", id);
+  if (error) throw error;
+}
+
+/** Removes a service from the menu. Past bookings keep their service name and price. */
+export async function removeService(id: string) {
+  const { error } = await supabase.from("services").update({ deleted_at: new Date().toISOString() }).eq("id", id);
+  if (error) throw error;
+}
 
 export const shopAppointmentsQuery = (shopId: string) =>
   queryOptions({
