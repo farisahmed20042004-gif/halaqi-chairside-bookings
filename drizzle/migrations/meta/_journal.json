@@ -29,6 +29,13 @@
       "when": 1793330990942,
       "tag": "0003_tighten_table_privileges",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1793413298502,
+      "tag": "0004_services_soft_delete",
+      "breakpoints": true
     }
   ]
 }
