@@ -301,7 +301,7 @@ function BookingForm({ barber }: { barber: PublicBarber }) {
             onClick={() => book.mutate()}
           >
             {book.isPending && <Loader2 className="animate-spin" />}
-            {startsAt ? `احجز ${formatTime(startsAt, tz)} — ${relativeDayLabel(day, tz)}` : "اختر وقتاً للحجز"}
+            {!serviceId ? "اختر الخدمة أولاً" : startsAt ? `احجز ${formatTime(startsAt, tz)} — ${relativeDayLabel(day, tz)}` : "اختر وقتاً للحجز"}
           </Button>
         </div>
       </div>
