@@ -16,7 +16,7 @@ describe("App routing", () => {
     expect(router.matchRoutes("/auth").at(-1)?.routeId).toBe("/auth");
   });
 
-  it.each(["/barber", "/customer", "/appointments", "/debts"])("keeps %s behind sign-in", (path) => {
+  it.each(["/barber", "/customer", "/appointments", "/debts", "/my-bookings", "/settings"])("keeps %s behind sign-in", (path) => {
     expect(router.matchRoutes(path).at(-1)?.routeId).toBe(`/_authenticated${path}`);
   });
 });

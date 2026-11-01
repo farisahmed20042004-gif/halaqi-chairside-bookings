@@ -36,6 +36,13 @@
       "when": 1793413298502,
       "tag": "0004_services_soft_delete",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1793502036424,
+      "tag": "0005_customer_saved_barber_and_bookings",
+      "breakpoints": true
     }
   ]
 }

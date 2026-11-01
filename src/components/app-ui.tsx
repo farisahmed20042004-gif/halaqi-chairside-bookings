@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link, useRouterState } from "@tanstack/react-router";
-import { ArrowRight, Bell, CalendarDays, LayoutDashboard, Loader2, Scissors, Wallet } from "lucide-react";
+import { ArrowRight, Bell, CalendarDays, LayoutDashboard, Loader2, Scissors, Settings, Wallet, type LucideIcon } from "lucide-react";
 import { useState, type ReactNode } from "react";
 
 import {
@@ -35,19 +35,22 @@ export function PageHeader({
 }: {
   title: string;
   subtitle?: string | undefined;
-  backTo?: "/" | "/barber" | "/customer";
+  /** Where the back arrow goes; `null` hides it (top-level tab pages). */
+  backTo?: "/" | "/barber" | "/customer" | "/my-bookings" | null;
   action?: ReactNode;
 }) {
   return (
     <header className="sticky top-0 z-20 border-b bg-background/90 px-4 pb-3 pt-4 backdrop-blur">
       <div className="flex items-center gap-3">
-        <Link
-          to={backTo}
-          aria-label="رجوع"
-          className="flex size-10 shrink-0 items-center justify-center rounded-full border bg-card text-foreground transition active:scale-95"
-        >
-          <ArrowRight className="size-5" />
-        </Link>
+        {backTo !== null && (
+          <Link
+            to={backTo}
+            aria-label="رجوع"
+            className="flex size-10 shrink-0 items-center justify-center rounded-full border bg-card text-foreground transition active:scale-95"
+          >
+            <ArrowRight className="size-5" />
+          </Link>
+        )}
         <div className="min-w-0 flex-1">
           <h1 className="truncate text-xl font-bold leading-tight">{title}</h1>
           {subtitle && <p className="truncate text-sm text-muted-foreground">{subtitle}</p>}
@@ -67,22 +70,38 @@ export function LoadingScreen({ label = "جارٍ التحميل…" }: { label?
   );
 }
 
-const barberNavItems = [
+type NavItem = {
+  to: "/barber" | "/appointments" | "/services" | "/debts" | "/customer" | "/my-bookings" | "/settings";
+  label: string;
+  icon: LucideIcon;
+};
+
+const barberNavItems: NavItem[] = [
   { to: "/barber", label: "الرئيسية", icon: LayoutDashboard },
   { to: "/appointments", label: "المواعيد", icon: CalendarDays },
   { to: "/services", label: "خدماتي", icon: Scissors },
   { to: "/debts", label: "الديون", icon: Wallet },
-] as const;
+];
+
+const customerNavItems: NavItem[] = [
+  { to: "/customer", label: "حلاقي", icon: Scissors },
+  { to: "/my-bookings", label: "مواعيدي", icon: CalendarDays },
+  { to: "/settings", label: "الإعدادات", icon: Settings },
+];
 
 export function BarberNav() {
   return <BottomNav items={barberNavItems} />;
 }
 
-function BottomNav({ items }: { items: typeof barberNavItems }) {
+export function CustomerNav() {
+  return <BottomNav items={customerNavItems} />;
+}
+
+function BottomNav({ items }: { items: NavItem[] }) {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   return (
     <nav className="fixed inset-x-0 bottom-0 z-30 border-t bg-card/95 backdrop-blur pb-safe">
-      <ul className="mx-auto grid max-w-md grid-cols-4">
+      <ul className={cn("mx-auto grid max-w-md", items.length === 3 ? "grid-cols-3" : "grid-cols-4")}>
         {items.map(({ to, label, icon: Icon }) => {
           const active = pathname === to || pathname.startsWith(`${to}/`);
           return (

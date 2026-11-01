@@ -140,6 +140,38 @@ export type Database = {
         }
         Relationships: []
       }
+      customer_barbers: {
+        Row: {
+          barber_code: string
+          barber_id: string
+          created_at: string
+          customer_id: string
+          updated_at: string
+        }
+        Insert: {
+          barber_code: string
+          barber_id: string
+          created_at?: string
+          customer_id: string
+          updated_at?: string
+        }
+        Update: {
+          barber_code?: string
+          barber_id?: string
+          created_at?: string
+          customer_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "customer_barbers_barber_id_fkey"
+            columns: ["barber_id"]
+            isOneToOne: false
+            referencedRelation: "barbers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       debts: {
         Row: {
           amount: number
@@ -508,6 +540,41 @@ export type Database = {
           timezone: string
         }[]
       }
+      get_my_barber: {
+        Args: never
+        Returns: {
+          address: string
+          area: string
+          barber_name: string
+          close_time: string
+          code: string
+          days_off: number[]
+          id: string
+          open_time: string
+          shop_name: string
+          slot_minutes: number
+          timezone: string
+        }[]
+      }
+      get_my_bookings: {
+        Args: never
+        Returns: {
+          barber_id: string
+          barber_name: string
+          cancelled_by_barber: boolean
+          created_at: string
+          duration_minutes: number
+          ends_at: string
+          id: string
+          price: number
+          service: string
+          service_id: string
+          shop_name: string
+          starts_at: string
+          status: Database["public"]["Enums"]["appointment_status"]
+          timezone: string
+        }[]
+      }
       get_my_shops: {
         Args: never
         Returns: {
@@ -584,6 +651,22 @@ export type Database = {
           isOneToOne: true
           isSetofReturn: false
         }
+      }
+      save_my_barber: {
+        Args: { p_code: string }
+        Returns: {
+          address: string
+          area: string
+          barber_name: string
+          close_time: string
+          code: string
+          days_off: number[]
+          id: string
+          open_time: string
+          shop_name: string
+          slot_minutes: number
+          timezone: string
+        }[]
       }
       search_public_shops: {
         Args: { p_query?: string }

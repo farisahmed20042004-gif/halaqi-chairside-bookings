@@ -305,6 +305,45 @@ export const myShopsQuery = () =>
     },
   });
 
+export type MyBooking = Fns["get_my_bookings"]["Returns"][number];
+
+/** The customer's bookings, newest first (live-updated by the bookings page). */
+export const myBookingsQuery = () =>
+  queryOptions({
+    queryKey: ["my-bookings"],
+    queryFn: async () => {
+      const { data, error } = await supabase.rpc("get_my_bookings");
+      if (error) throw error;
+      return data;
+    },
+    refetchInterval: 30_000,
+  });
+
+/** The barber this customer saved (entered their code once). */
+export const myBarberQuery = () =>
+  queryOptions({
+    queryKey: ["my-barber"],
+    queryFn: async (): Promise<PublicBarber | null> => {
+      const { data, error } = await supabase.rpc("get_my_barber");
+      if (error) throw error;
+      return data[0] ?? null;
+    },
+  });
+
+export async function saveMyBarber(code: string): Promise<PublicBarber> {
+  const { data, error } = await supabase.rpc("save_my_barber", { p_code: code });
+  if (error) throw error;
+  const b = data[0];
+  if (!b) throw new Error("BARBER_NOT_FOUND");
+  return b;
+}
+
+export async function forgetMyBarber() {
+  const id = await currentUserId();
+  const { error } = await supabase.from("customer_barbers").delete().eq("customer_id", id);
+  if (error) throw error;
+}
+
 export const myDebtsQuery = () =>
   queryOptions({
     queryKey: ["my-debts"],

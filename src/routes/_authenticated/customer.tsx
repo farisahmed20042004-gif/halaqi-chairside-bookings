@@ -1,37 +1,40 @@
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient, useSuspenseQuery } from "@tanstack/react-query";
-import { useState } from "react";
-import { CalendarCheck, KeyRound, Loader2, LogOut, MapPin, Scissors } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+import { CalendarCheck, CheckCircle2, KeyRound, Loader2, MapPin, Scissors } from "lucide-react";
 import { toast } from "sonner";
 
-import { AppointmentStatusBadge, Chip, EmptyState, MobileFrame, PageHeader } from "@/components/app-ui";
+import { CustomerNav, EmptyState, LoadingScreen, MobileFrame, NotificationsBell, PageHeader } from "@/components/app-ui";
 import { DayPicker, ServicePicker, SlotGrid } from "@/components/barber-sheets";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { useSignOut } from "@/hooks/use-session";
-import { supabase } from "@/integrations/supabase/client";
-import { dayKey, formatDayKey, formatTime, relativeDayLabel, todayKey } from "@/lib/format";
+import { dayKey, formatDayKey, formatMoney, formatTime, relativeDayLabel, todayKey } from "@/lib/format";
 import {
   barberByCodeQuery,
   bookAppointment,
-  myAppointmentsQuery,
+  myBarberQuery,
   profileQuery,
   publicServicesQuery,
+  requireRole,
+  saveMyBarber,
   type PublicBarber,
 } from "@/lib/halaqi-api";
 import { arabicError, normalizeCode } from "@/lib/rules";
+import { clearSavedCode, readSavedCode, writeSavedCode } from "@/lib/saved-barber";
 
 export const Route = createFileRoute("/_authenticated/customer")({
   validateSearch: (s: Record<string, unknown>): { code?: string } =>
     typeof s["code"] === "string" ? { code: normalizeCode(s["code"]) } : {},
-  loader: ({ context }) => context.queryClient.ensureQueryData(profileQuery()),
+  beforeLoad: ({ context }) => requireRole(context.queryClient, "customer"),
+  loader: ({ context }) =>
+    Promise.all([context.queryClient.ensureQueryData(profileQuery()), context.queryClient.ensureQueryData(myBarberQuery())]),
   head: () => ({
     meta: [
       { title: "احجز موعدك — حلاقي" },
-      { name: "description", content: "أدخل رمز حلاقك، اختر الوقت المتاح، واحجز موعدك في حلاقي." },
+      { name: "description", content: "صفحة حلاقك في حلاقي: اختر الخدمة والوقت المتاح واحجز موعدك." },
       { property: "og:title", content: "احجز موعدك — حلاقي" },
-      { property: "og:description", content: "أدخل رمز الحلاق واختر وقتاً متاحاً للحجز." },
+      { property: "og:description", content: "اختر الخدمة والوقت المتاح عند حلاقك واحجز مباشرة." },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
     ],
@@ -41,36 +44,88 @@ export const Route = createFileRoute("/_authenticated/customer")({
 
 function CustomerPage() {
   const { code } = Route.useSearch();
-  return code ? <BarberBooking code={code} /> : <CodeEntry />;
+  const { user } = Route.useRouteContext();
+  const navigate = useNavigate();
+  const qc = useQueryClient();
+  const { data: saved } = useSuspenseQuery(myBarberQuery());
+  const [restoring, setRestoring] = useState(true);
+  const started = useRef(false);
+
+  // Keep the device copy in sync with the database; restore from the device if the database has none.
+  useEffect(() => {
+    if (saved) {
+      writeSavedCode(user.id, saved.code);
+      setRestoring(false);
+      return;
+    }
+    if (started.current) return;
+    started.current = true;
+    const pending = code ?? readSavedCode(user.id);
+    if (!pending) {
+      setRestoring(false);
+      return;
+    }
+    saveMyBarber(pending)
+      .then((b) => {
+        qc.setQueryData(myBarberQuery().queryKey, b);
+        writeSavedCode(user.id, b.code);
+        if (code) toast.success(`حُفظ حلاقك: ${b.shop_name}`);
+      })
+      .catch((e) => {
+        if (code) toast.error(arabicError(e));
+        else clearSavedCode(user.id);
+      })
+      .finally(() => {
+        setRestoring(false);
+        if (code) navigate({ to: "/customer", search: {}, replace: true });
+      });
+  }, [saved, code, user.id, qc, navigate]);
+
+  if (restoring && !saved) {
+    return (
+      <MobileFrame>
+        <LoadingScreen label="جارٍ فتح صفحة حلاقك…" />
+      </MobileFrame>
+    );
+  }
+  if (code && saved && code !== saved.code) return <OtherBarber code={code} />;
+  if (saved) return <BookingForm barber={saved} />;
+  return <CodeEntry />;
+}
+
+function CustomerHeader({ title, subtitle }: { title: string; subtitle?: string }) {
+  return <PageHeader title={title} subtitle={subtitle} backTo={null} action={<NotificationsBell />} />;
 }
 
 function CodeEntry() {
-  const navigate = useNavigate();
-  const signOut = useSignOut();
+  const { user } = Route.useRouteContext();
+  const qc = useQueryClient();
   const [code, setCode] = useState("");
+  const save = useMutation({
+    mutationFn: () => saveMyBarber(normalizeCode(code)),
+    onSuccess: (b) => {
+      writeSavedCode(user.id, b.code);
+      qc.setQueryData(myBarberQuery().queryKey, b);
+      toast.success(`حُفظ حلاقك: ${b.shop_name}`);
+    },
+    onError: (e) => toast.error(arabicError(e)),
+  });
   return (
-    <MobileFrame>
-      <PageHeader
-        title="أنا زبون"
-        action={
-          <button type="button" aria-label="تسجيل الخروج" onClick={signOut} className="flex size-10 items-center justify-center rounded-full border bg-card">
-            <LogOut className="size-4" />
-          </button>
-        }
-      />
+    <MobileFrame withNav>
+      <CustomerHeader title="حلاقي" />
       <div className="space-y-6 px-5 pt-8">
         <div className="flex size-16 items-center justify-center rounded-2xl bg-gradient-ink text-brass shadow-lift">
           <KeyRound className="size-8" />
         </div>
         <div>
           <h2 className="text-3xl font-bold">أدخل رمز حلاقك</h2>
-          <p className="mt-2 text-muted-foreground">اطلب الرمز من حلاقك لترى أوقاته المتاحة وتحجز.</p>
+          <p className="mt-2 text-muted-foreground">تدخله مرة واحدة فقط. بعدها تفتح صفحة حلاقك مباشرة كلما فتحت التطبيق.</p>
         </div>
         <form
           className="space-y-3"
           onSubmit={(e) => {
             e.preventDefault();
-            if (code.trim()) navigate({ to: "/customer", search: { code: normalizeCode(code) } });
+            if (code.trim()) save.mutate();
           }}
         >
           <Label htmlFor="code">رمز الحلاق</Label>
@@ -84,88 +139,73 @@ function CodeEntry() {
             placeholder="HLQ-XXXXXX"
             className="h-16 text-center font-mono text-2xl tracking-[0.2em]"
           />
-          <Button type="submit" variant="ink" size="xl" className="w-full" disabled={!code.trim()}>
+          <Button type="submit" variant="ink" size="xl" className="w-full" disabled={!code.trim() || save.isPending}>
+            {save.isPending && <Loader2 className="animate-spin" />}
             متابعة
           </Button>
         </form>
-        <MyAppointments />
       </div>
+      <CustomerNav />
     </MobileFrame>
   );
 }
 
-function MyAppointments() {
+/** A shared link to a different barber than the saved one. */
+function OtherBarber({ code }: { code: string }) {
+  const { user } = Route.useRouteContext();
   const qc = useQueryClient();
-  const { data, isPending } = useQuery(myAppointmentsQuery());
-  const cancel = useMutation({
-    mutationFn: async (id: string) => {
-      const { error } = await supabase.rpc("cancel_my_appointment", { p_id: id });
-      if (error) throw error;
-    },
-    onSuccess: () => {
-      toast.success("أُلغي الموعد");
-      qc.invalidateQueries({ queryKey: ["my-appointments"] });
-      qc.invalidateQueries({ queryKey: ["slots"] });
+  const navigate = useNavigate();
+  const { data: barber, isPending } = useQuery(barberByCodeQuery(code));
+  const save = useMutation({
+    mutationFn: () => saveMyBarber(code),
+    onSuccess: (b) => {
+      writeSavedCode(user.id, b.code);
+      qc.setQueryData(myBarberQuery().queryKey, b);
+      toast.success(`أصبح ${b.shop_name} حلاقك`);
+      navigate({ to: "/customer", search: {}, replace: true });
     },
     onError: (e) => toast.error(arabicError(e)),
   });
-  return (
-    <section className="pb-10">
-      <h2 className="mb-3 text-lg font-bold">مواعيدي</h2>
-      {isPending ? (
-        <p className="text-sm text-muted-foreground">جارٍ التحميل…</p>
-      ) : !data || data.length === 0 ? (
-        <EmptyState title="لا مواعيد بعد" />
-      ) : (
-        <ul className="space-y-2.5">
-          {data.map((a) => (
-            <li key={a.id} className="rounded-2xl border bg-card p-4 shadow-card">
-              <div className="flex items-start justify-between gap-3">
-                <div>
-                  <p className="font-semibold">{a.shop_name}</p>
-                  <p className="text-sm text-muted-foreground">
-                    {a.service} · {formatDayKey(dayKey(a.starts_at, a.timezone))} · {formatTime(a.starts_at, a.timezone)}
-                  </p>
-                </div>
-                <AppointmentStatusBadge status={a.status} />
-              </div>
-              {a.status === "confirmed" && new Date(a.starts_at) > new Date() && (
-                <Button variant="outline" size="sm" className="mt-3" disabled={cancel.isPending} onClick={() => cancel.mutate(a.id)}>
-                  إلغاء الموعد
-                </Button>
-              )}
-            </li>
-          ))}
-        </ul>
-      )}
-    </section>
-  );
-}
-
-function BarberBooking({ code }: { code: string }) {
-  const { data: barber, isPending } = useQuery(barberByCodeQuery(code));
   if (isPending) {
     return (
       <MobileFrame>
-        <PageHeader title="احجز موعدك" backTo="/customer" />
-        <p className="py-16 text-center text-muted-foreground">جارٍ البحث عن الحلاق…</p>
+        <LoadingScreen label="جارٍ البحث عن الحلاق…" />
       </MobileFrame>
     );
   }
   if (!barber) {
     return (
-      <MobileFrame>
-        <PageHeader title="احجز موعدك" backTo="/customer" />
-        <div className="px-5 pt-10">
-          <EmptyState title="الرمز غير صحيح" hint="تأكد من الرمز مع حلاقك وحاول مرة أخرى." />
+      <MobileFrame withNav>
+        <CustomerHeader title="حلاقي" />
+        <div className="space-y-4 px-5 pt-10">
+          <EmptyState title="الرمز غير صحيح" hint="تأكد من الرمز مع حلاقك." />
+          <Button asChild variant="outline" size="lg" className="w-full bg-card">
+            <Link to="/customer" search={{}} replace>
+              العودة إلى حلاقي
+            </Link>
+          </Button>
         </div>
+        <CustomerNav />
       </MobileFrame>
     );
   }
-  return <BookingForm barber={barber} />;
+  return (
+    <BookingForm
+      barber={barber}
+      banner={
+        <div className="rounded-2xl border border-brass/50 bg-accent/40 p-3 text-sm">
+          <p>هذا ليس حلاقك المحفوظ.</p>
+          <Button variant="ink" size="sm" className="mt-2" disabled={save.isPending} onClick={() => save.mutate()}>
+            {save.isPending && <Loader2 className="animate-spin" />}
+            اجعله حلاقي
+          </Button>
+        </div>
+      }
+    />
+  );
 }
 
-function BookingForm({ barber }: { barber: PublicBarber }) {
+function BookingForm({ barber, banner }: { barber: PublicBarber; banner?: React.ReactNode }) {
   const qc = useQueryClient();
   const { data: profile } = useSuspenseQuery(profileQuery());
   const tz = barber.timezone;
@@ -173,16 +213,17 @@ function BookingForm({ barber }: { barber: PublicBarber }) {
   const [startsAt, setStartsAt] = useState("");
   const { data: services = [], isPending: servicesLoading } = useQuery(publicServicesQuery(barber.id));
   const [serviceId, setServiceId] = useState("");
-  const service = services.find((s) => s.id === serviceId)?.name ?? "";
+  const selected = services.find((s) => s.id === serviceId);
   const [name, setName] = useState(profile?.full_name ?? "");
   const [phone, setPhone] = useState(profile?.phone ?? "");
-  const [done, setDone] = useState<{ startsAt: string; service: string } | null>(null);
+  const [done, setDone] = useState<{ startsAt: string; service: string; price: number; status: string } | null>(null);
 
   const book = useMutation({
     mutationFn: () => bookAppointment({ barberId: barber.id, startsAt, serviceId, name: name.trim(), phone: phone.trim() || undefined }),
-    onSuccess: () => {
-      setDone({ startsAt, service });
+    onSuccess: (a) => {
+      setDone({ startsAt: a.starts_at, service: a.service, price: Number(a.price ?? 0), status: a.status });
       setStartsAt("");
+      qc.invalidateQueries({ queryKey: ["my-bookings"] });
       qc.invalidateQueries({ queryKey: ["my-appointments"] });
     },
     onError: (e) => {
@@ -195,33 +236,43 @@ function BookingForm({ barber }: { barber: PublicBarber }) {
   const shopLike = { timezone: tz, days_off: barber.days_off };
 
   if (done) {
+    const weekday = formatDayKey(dayKey(done.startsAt, tz), { weekday: "long" });
+    const confirmed = done.status === "confirmed";
     return (
-      <MobileFrame>
-        <PageHeader title="تم الحجز" backTo="/customer" />
-        <div className="space-y-6 px-5 pt-10 text-center">
-          <div className="mx-auto flex size-20 items-center justify-center rounded-full bg-success/15 text-success">
-            <CalendarCheck className="size-10" />
-          </div>
-          <h2 className="text-3xl font-bold">موعدك مثبّت</h2>
-          <div className="space-y-2 rounded-2xl border bg-card p-5 text-right shadow-card">
-            <p>{barber.shop_name}</p>
-            <p className="text-muted-foreground">{done.service}</p>
-            <p className="font-semibold">
-              {formatDayKey(dayKey(done.startsAt, tz))} · {formatTime(done.startsAt, tz)}
+      <MobileFrame withNav>
+        <CustomerHeader title="تم الحجز" />
+        <div className="space-y-5 px-5 pt-8">
+          <div className={confirmed ? "rounded-3xl bg-success p-6 text-success-foreground shadow-lift" : "rounded-3xl bg-warning p-6 text-warning-foreground shadow-lift"}>
+            {confirmed ? <CheckCircle2 className="size-12" /> : <CalendarCheck className="size-12" />}
+            <h2 className="mt-3 text-2xl font-bold leading-snug">
+              {confirmed
+                ? `تم تأكيد موعدك يوم ${weekday} الساعة ${formatTime(done.startsAt, tz)}`
+                : `حجزك بانتظار التأكيد — ${weekday} الساعة ${formatTime(done.startsAt, tz)}`}
+            </h2>
+            <p className="mt-2 opacity-90">
+              {done.service} · {formatMoney(done.price)}
+            </p>
+            <p className="opacity-90">
+              {barber.shop_name} · {formatDayKey(dayKey(done.startsAt, tz))}
             </p>
           </div>
+          <Button asChild variant="ink" size="xl" className="w-full">
+            <Link to="/my-bookings">عرض مواعيدي</Link>
+          </Button>
           <Button variant="outline" size="lg" className="w-full bg-card" onClick={() => setDone(null)}>
             حجز موعد آخر
           </Button>
         </div>
+        <CustomerNav />
       </MobileFrame>
     );
   }
 
   return (
-    <MobileFrame>
-      <PageHeader title="احجز موعدك" backTo="/customer" />
-      <div className="space-y-6 px-4 pb-32 pt-4">
+    <MobileFrame withNav>
+      <CustomerHeader title="احجز موعدك" />
+      <div className="space-y-6 px-4 pb-44 pt-4">
+        {banner}
         <div className="flex items-center gap-3 rounded-2xl bg-gradient-ink p-4 text-ink-foreground shadow-lift">
           <div className="flex size-12 items-center justify-center rounded-xl bg-brass text-brass-foreground">
             <Scissors className="size-6" />
@@ -229,9 +280,9 @@ function BookingForm({ barber }: { barber: PublicBarber }) {
           <div className="min-w-0 flex-1">
             <p className="font-display text-lg font-bold">{barber.shop_name}</p>
             <p className="text-xs text-ink-foreground/70">{barber.barber_name}</p>
-            {barber.area && (
+            {(barber.area || barber.address) && (
               <p className="flex items-center gap-1 text-xs text-ink-foreground/70">
-                <MapPin className="size-3.5" /> {barber.area}
+                <MapPin className="size-3.5" /> {[barber.area, barber.address].filter(Boolean).join(" · ")}
               </p>
             )}
           </div>
@@ -291,7 +342,7 @@ function BookingForm({ barber }: { barber: PublicBarber }) {
         )}
       </div>
 
-      <div className="fixed inset-x-0 bottom-0 z-30 border-t bg-card/95 px-4 pt-3 backdrop-blur pb-safe">
+      <div className="fixed inset-x-0 z-30 border-t bg-card/95 px-4 py-3 backdrop-blur" style={{ bottom: "calc(4.25rem + env(safe-area-inset-bottom))" }}>
         <div className="mx-auto max-w-md">
           <Button
             variant="brass"
@@ -301,10 +352,15 @@ function BookingForm({ barber }: { barber: PublicBarber }) {
             onClick={() => book.mutate()}
           >
             {book.isPending && <Loader2 className="animate-spin" />}
-            {!serviceId ? "اختر الخدمة أولاً" : startsAt ? `احجز ${formatTime(startsAt, tz)} — ${relativeDayLabel(day, tz)}` : "اختر وقتاً للحجز"}
+            {!serviceId
+              ? "اختر الخدمة أولاً"
+              : startsAt
+                ? `احجز ${formatTime(startsAt, tz)} — ${relativeDayLabel(day, tz)}${selected ? ` · ${formatMoney(selected.price)}` : ""}`
+                : "اختر وقتاً للحجز"}
           </Button>
         </div>
       </div>
+      <CustomerNav />
     </MobileFrame>
   );
 }

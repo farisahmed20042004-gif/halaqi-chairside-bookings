@@ -33,7 +33,8 @@ const messages: Record<string, string> = {
   DAY_OFF: "الحلاق لا يعمل في هذا اليوم.",
   TOO_MANY_BOOKINGS: "لديك ٣ مواعيد قادمة عند هذا الحلاق. ألغِ أحدها لتحجز جديداً.",
   CANNOT_CANCEL: "لا يمكن إلغاء هذا الموعد.",
-  BARBER_NOT_FOUND: "لم نجد هذا الحلاق.",
+  BARBER_NOT_FOUND: "الرمز غير صحيح. تأكد منه مع حلاقك.",
+  NOT_A_CUSTOMER: "هذا الحساب حساب حلاق. سجّل بحساب زبون لتحجز.",
   SERVICE_UNAVAILABLE: "هذه الخدمة لم تعد متاحة. اختر خدمة أخرى.",
   services_name_check: "اسم الخدمة يجب أن يكون بين حرفين و٦٠ حرفاً.",
   services_price_check: "السعر غير صالح.",
@@ -74,3 +75,29 @@ export function serviceFormError(f: { name: string; price: number; duration: num
     return "المدة يجب أن تكون بين ٥ و٤٨٠ دقيقة.";
   return null;
 }
+
+/** How a booking reads for the customer. A booking the barber cancelled reads as "rejected". */
+export type CustomerBookingState = "pending" | "confirmed" | "rejected" | "cancelled" | "completed";
+
+export function customerBookingState(b: { status: string; cancelled_by_barber: boolean | null }): CustomerBookingState {
+  if (b.status === "cancelled") return b.cancelled_by_barber ? "rejected" : "cancelled";
+  if (b.status === "pending" || b.status === "confirmed" || b.status === "completed") return b.status;
+  return "pending";
+}
+
+/** The soonest confirmed booking that hasn't started yet (shown as the big green card). */
+export function nextConfirmedBooking<T extends { status: string; starts_at: string }>(list: T[], now: Date = new Date()): T | null {
+  return (
+    list
+      .filter((b) => b.status === "confirmed" && new Date(b.starts_at) > now)
+      .sort((a, b) => new Date(a.starts_at).getTime() - new Date(b.starts_at).getTime())[0] ?? null
+  );
+}
+
+/** Customers may cancel only their own future bookings that are still pending or confirmed. */
+export function canCustomerCancel(b: { status: string; starts_at: string }, now: Date = new Date()) {
+  return (b.status === "pending" || b.status === "confirmed") && new Date(b.starts_at) > now;
+}
+
+/** Device copy of the saved barber code, kept per account so a shared phone never mixes customers. */
+export const savedBarberStorageKey = (userId: string) => `halaqi:barber-code:${userId}`;
