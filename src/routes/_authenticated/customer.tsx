@@ -305,7 +305,22 @@ function BookingForm({ barber, savedCount }: { barber: BookableShop; savedCount:
     <MobileFrame withNav>
       <CustomerHeader title="احجز موعدك" />
       <div className="space-y-6 px-4 pb-44 pt-4">
-        {banner}
+        <div className="flex items-center justify-between gap-2">
+          {savedCount > 1 ? (
+            <Button asChild variant="ghost" size="sm" className="px-2">
+              <Link to="/customer" search={{}}>
+                <ChevronLeft className="rotate-180" /> حلاقيني ({savedCount.toLocaleString("ar-IQ")})
+              </Link>
+            </Button>
+          ) : (
+            <span />
+          )}
+          <Button asChild variant="outline" size="sm" className="bg-card">
+            <Link to="/customer" search={{ add: true }}>
+              إضافة حلاق جديد <Plus />
+            </Link>
+          </Button>
+        </div>
         <div className="flex items-center gap-3 rounded-2xl bg-gradient-ink p-4 text-ink-foreground shadow-lift">
           <div className="flex size-12 items-center justify-center rounded-xl bg-brass text-brass-foreground">
             <Scissors className="size-6" />
