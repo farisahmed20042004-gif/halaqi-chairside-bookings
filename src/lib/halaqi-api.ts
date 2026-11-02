@@ -319,18 +319,21 @@ export const myBookingsQuery = () =>
     refetchInterval: 30_000,
   });
 
-/** The barber this customer saved (entered their code once). */
-export const myBarberQuery = () =>
+export type SavedBarber = Fns["get_my_barbers"]["Returns"][number];
+
+/** Every barber this customer saved (each code entered once), in the order added. */
+export const myBarbersQuery = () =>
   queryOptions({
-    queryKey: ["my-barber"],
-    queryFn: async (): Promise<PublicBarber | null> => {
-      const { data, error } = await supabase.rpc("get_my_barber");
+    queryKey: ["my-barbers"],
+    queryFn: async (): Promise<SavedBarber[]> => {
+      const { data, error } = await supabase.rpc("get_my_barbers");
       if (error) throw error;
-      return data[0] ?? null;
+      return data;
     },
   });
 
-export async function saveMyBarber(code: string): Promise<PublicBarber> {
+/** Adds a barber to the customer's list by code; the other saved barbers stay. */
+export async function saveMyBarber(code: string): Promise<SavedBarber> {
   const { data, error } = await supabase.rpc("save_my_barber", { p_code: code });
   if (error) throw error;
   const b = data[0];
@@ -338,9 +341,10 @@ export async function saveMyBarber(code: string): Promise<PublicBarber> {
   return b;
 }
 
-export async function forgetMyBarber() {
+/** Removes one barber from the customer's list. */
+export async function removeMyBarber(barberId: string) {
   const id = await currentUserId();
-  const { error } = await supabase.from("customer_barbers").delete().eq("customer_id", id);
+  const { error } = await supabase.from("customer_barbers").delete().eq("customer_id", id).eq("barber_id", barberId);
   if (error) throw error;
 }
 

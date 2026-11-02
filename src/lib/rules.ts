@@ -99,5 +99,43 @@ export function canCustomerCancel(b: { status: string; starts_at: string }, now:
   return (b.status === "pending" || b.status === "confirmed") && new Date(b.starts_at) > now;
 }
 
-/** Device copy of the saved barber code, kept per account so a shared phone never mixes customers. */
-export const savedBarberStorageKey = (userId: string) => `halaqi:barber-code:${userId}`;
+/** Device copy of the customer's saved barbers: one array for the phone, each entry tagged with its account. */
+export const SAVED_BARBERS_KEY = "halaqi_barbers_list";
+/** Older single-code key, read once and moved into the list. */
+export const legacySavedBarberKey = (userId: string) => `halaqi:barber-code:${userId}`;
+
+export type SavedBarberEntry = { user_id: string; code: string; shop_name?: string };
+
+export function parseSavedBarbers(raw: string | null): SavedBarberEntry[] {
+  if (!raw) return [];
+  try {
+    const list: unknown = JSON.parse(raw);
+    if (!Array.isArray(list)) return [];
+    return list.filter(
+      (e): e is SavedBarberEntry =>
+        !!e && typeof e === "object" && typeof (e as SavedBarberEntry).user_id === "string" && typeof (e as SavedBarberEntry).code === "string",
+    );
+  } catch {
+    return [];
+  }
+}
+
+/** Appends a barber for this account; never removes the others. Re-adding a code only refreshes its name. */
+export function addSavedBarber(list: SavedBarberEntry[], entry: SavedBarberEntry): SavedBarberEntry[] {
+  const code = normalizeCode(entry.code);
+  if (!code) return list;
+  const i = list.findIndex((e) => e.user_id === entry.user_id && e.code === code);
+  if (i === -1) return [...list, { ...entry, code }];
+  if (!entry.shop_name || list[i]!.shop_name === entry.shop_name) return list;
+  return list.map((e, j) => (j === i ? { ...e, shop_name: entry.shop_name } : e));
+}
+
+export function removeSavedBarber(list: SavedBarberEntry[], userId: string, code: string): SavedBarberEntry[] {
+  const c = normalizeCode(code);
+  return list.filter((e) => !(e.user_id === userId && e.code === c));
+}
+
+/** Codes this account saved on this phone, in the order they were added. */
+export function savedCodesFor(list: SavedBarberEntry[], userId: string): string[] {
+  return list.filter((e) => e.user_id === userId).map((e) => e.code);
+}
