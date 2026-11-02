@@ -556,6 +556,22 @@ export type Database = {
           timezone: string
         }[]
       }
+      get_my_barbers: {
+        Args: never
+        Returns: {
+          address: string
+          area: string
+          barber_name: string
+          close_time: string
+          code: string
+          days_off: number[]
+          id: string
+          open_time: string
+          shop_name: string
+          slot_minutes: number
+          timezone: string
+        }[]
+      }
       get_my_bookings: {
         Args: never
         Returns: {

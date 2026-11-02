@@ -43,6 +43,13 @@
       "when": 1793502036424,
       "tag": "0005_customer_saved_barber_and_bookings",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1793603155346,
+      "tag": "0006_customer_many_saved_barbers",
+      "breakpoints": true
     }
   ]
 }
