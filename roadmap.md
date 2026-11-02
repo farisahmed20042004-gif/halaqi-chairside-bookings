@@ -13,4 +13,6 @@
 - [ ] Sign-in/sign-up buttons do nothing if tapped before the page finishes loading — waiting on user OK to fix
 - [ ] APK packaging (user said: not yet): needs Android package name + signing key fingerprint (assetlinks.json)
 - [x] "خدماتي": barbers add/edit/hide/delete services; customers pick a service before choosing a time (tested in DB + browser)
+- [x] Customer enters barber code once (saved on phone + account), "تغيير الحلاق" in settings
+- [x] "مواعيدي" page: status badges, newest first, live updates, big green card for the next confirmed booking
 - [ ] Later (not started): notifications, offline mode, editing working hours after setup
