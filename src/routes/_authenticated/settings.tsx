@@ -109,13 +109,13 @@ function SettingsPage() {
       </div>
 
       <ConfirmDialog
-        open={confirm}
-        onOpenChange={setConfirm}
-        title="تغيير الحلاق؟"
-        description="ستحتاج لإدخال رمز الحلاق الجديد. مواعيدك السابقة تبقى محفوظة في «مواعيدي»."
-        confirmLabel="نعم، غيّر الحلاق"
-        pending={change.isPending}
-        onConfirm={() => change.mutate()}
+        open={!!removing}
+        onOpenChange={(o) => !o && setRemoving(null)}
+        title={`إزالة ${removing?.shop_name ?? "الحلاق"}؟`}
+        description="سيُحذف من قائمة حلاقيك فقط، ويبقى باقي الحلاقين. مواعيدك السابقة تبقى محفوظة في «مواعيدي»."
+        confirmLabel="نعم، أزله"
+        pending={remove.isPending}
+        onConfirm={() => removing && remove.mutate(removing)}
       />
       <CustomerNav />
     </MobileFrame>
