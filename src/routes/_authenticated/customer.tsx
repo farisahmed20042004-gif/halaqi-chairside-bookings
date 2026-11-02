@@ -1,7 +1,7 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient, useSuspenseQuery, type QueryClient } from "@tanstack/react-query";
 import { useEffect, useRef, useState } from "react";
-import { CalendarCheck, CheckCircle2, ChevronLeft, ChevronRight, KeyRound, Loader2, MapPin, Plus, Scissors } from "lucide-react";
+import { CalendarCheck, CheckCircle2, ChevronLeft, KeyRound, Loader2, MapPin, Plus, Scissors } from "lucide-react";
 import { toast } from "sonner";
 
 import { CustomerNav, EmptyState, LoadingScreen, MobileFrame, NotificationsBell, PageHeader } from "@/components/app-ui";
@@ -21,7 +21,7 @@ import {
   type SavedBarber,
 } from "@/lib/halaqi-api";
 import { arabicError, normalizeCode } from "@/lib/rules";
-import { addSavedCode, readSavedCode, readSavedCodes, removeSavedCode } from "@/lib/saved-barber";
+import { addSavedCode, readSavedCodes, removeSavedCode } from "@/lib/saved-barber";
 
 type CustomerSearch = { code?: string; shop?: string; add?: boolean };
 
@@ -199,7 +199,7 @@ function CodeEntry({ canCancel }: { canCancel: boolean }) {
 function BarberList({ barbers }: { barbers: SavedBarber[] }) {
   return (
     <MobileFrame withNav>
-      <CustomerHeader title="حلاقيني" subtitle={`${barbers.length.toLocaleString("ar-IQ")} حلاقين محفوظين`} />
+      <CustomerHeader title="حلاقيني" subtitle={`عدد الحلاقين المحفوظين: ${barbers.length.toLocaleString("ar-IQ")}`} />
       <div className="space-y-3 px-4 pb-8 pt-4">
         <p className="text-sm text-muted-foreground">اختر الحلاق الذي تريد الحجز عنده.</p>
         <ul className="space-y-3">
