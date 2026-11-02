@@ -105,7 +105,7 @@ export const SAVED_BARBERS_KEY = "halaqi_barbers_list";
 /** Older single-code key, read once and moved into the list. */
 export const legacySavedBarberKey = (userId: string) => `halaqi:barber-code:${userId}`;
 
-export type SavedBarberEntry = { user_id: string; code: string; shop_name?: string };
+export type SavedBarberEntry = { user_id: string; code: string; shop_name?: string | undefined };
 
 export function parseSavedBarbers(raw: string | null): SavedBarberEntry[] {
   if (!raw) return [];
