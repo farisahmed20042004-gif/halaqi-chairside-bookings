@@ -8,7 +8,11 @@ import {
   nextConfirmedBooking,
   normalizeCode,
   safeRedirect,
-  savedBarberStorageKey,
+  addSavedBarber,
+  parseSavedBarbers,
+  removeSavedBarber,
+  SAVED_BARBERS_KEY,
+  savedCodesFor,
   serviceFormError,
 } from "@/lib/rules";
 
@@ -64,6 +68,28 @@ describe("customer booking status", () => {
   });
 });
 
-describe("saved barber on this phone", () => {
-  it("is stored separately for each account", () => expect(savedBarberStorageKey("a")).not.toBe(savedBarberStorageKey("b")));
+describe("saved barbers on this phone", () => {
+  it("uses the halaqi_barbers_list key", () => expect(SAVED_BARBERS_KEY).toBe("halaqi_barbers_list"));
+  it("adding a new code keeps the old ones", () => {
+    const one = addSavedBarber([], { user_id: "u", code: "HLQ-AAAAAA" });
+    const two = addSavedBarber(one, { user_id: "u", code: "hlq-bbbbbb" });
+    expect(savedCodesFor(two, "u")).toEqual(["HLQ-AAAAAA", "HLQ-BBBBBB"]);
+  });
+  it("adding the same code twice does not duplicate it", () => {
+    const list = addSavedBarber([{ user_id: "u", code: "HLQ-AAAAAA" }], { user_id: "u", code: " HLQ-AAAAAA " });
+    expect(list).toHaveLength(1);
+  });
+  it("keeps each account's barbers separate on a shared phone", () => {
+    const list = addSavedBarber([{ user_id: "a", code: "HLQ-AAAAAA" }], { user_id: "b", code: "HLQ-BBBBBB" });
+    expect(savedCodesFor(list, "a")).toEqual(["HLQ-AAAAAA"]);
+    expect(savedCodesFor(list, "b")).toEqual(["HLQ-BBBBBB"]);
+  });
+  it("removing one barber leaves the others", () => {
+    const list = [
+      { user_id: "u", code: "HLQ-AAAAAA" },
+      { user_id: "u", code: "HLQ-BBBBBB" },
+    ];
+    expect(savedCodesFor(removeSavedBarber(list, "u", "HLQ-AAAAAA"), "u")).toEqual(["HLQ-BBBBBB"]);
+  });
+  it("ignores a damaged stored list", () => expect(parseSavedBarbers("{not json")).toEqual([]));
 });

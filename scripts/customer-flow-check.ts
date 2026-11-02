@@ -1,4 +1,4 @@
-// Checks the customer flow: barber code saved once (customer_barbers), "change barber",
+// Checks the customer flow: barber codes saved once each (customer_barbers, many per customer), add/remove,
 // and "مواعيدي" statuses (confirmed / rejected by barber / cancelled by customer / completed).
 // Run: bun scripts/customer-flow-check.ts   (creates throwaway accounts named halaqi.test.*)
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
@@ -38,21 +38,21 @@ const A = await mkShop(barberA, "صالون أ");
 const B = await mkShop(barberB, "صالون ب");
 
 // 1. Save code once
-const none = await cust.c.rpc("get_my_barber");
+const none = await cust.c.rpc("get_my_barbers");
 check("new customer has no saved barber", (none.data ?? []).length === 0, none);
 const bad = await cust.c.rpc("save_my_barber", { p_code: "HLQ-NOPE00" });
 check("a wrong code is refused", !!bad.error && bad.error.message.includes("BARBER_NOT_FOUND"), bad);
 const saved = await cust.c.rpc("save_my_barber", { p_code: ` ${A.shop.code.toLowerCase()} ` });
 check("valid code (any case/spaces) is saved", saved.data?.[0]?.id === A.shop.id, saved);
-const row = await cust.c.from("customer_barbers").select("*").single();
+const row = await cust.c.from("customer_barbers").select("*").eq("barber_id", A.shop.id).single();
 check("row stored with customer_id, barber_id and barber_code", row.data?.customer_id === cust.id && row.data?.barber_id === A.shop.id && row.data?.barber_code === A.shop.code, row);
-const again = await cust.c.rpc("get_my_barber");
+const again = await cust.c.rpc("get_my_barbers");
 check("saved barber comes back on the next visit", again.data?.[0]?.code === A.shop.code, again);
 
 // Re-login on a "new device" still finds it
 const fresh = createClient<Database>(url, key, { auth: { persistSession: false, autoRefreshToken: false } });
 await fresh.auth.signInWithPassword({ email: cust.email, password: cust.password });
-const fromNewDevice = await fresh.rpc("get_my_barber");
+const fromNewDevice = await fresh.rpc("get_my_barbers");
 check("saved barber survives sign-out / sign-in", fromNewDevice.data?.[0]?.id === A.shop.id, fromNewDevice);
 
 // Privacy
@@ -67,13 +67,22 @@ check("barber accounts cannot save a barber", !!barberSave.error);
 const otherDelete = await other.c.from("customer_barbers").delete().eq("customer_id", cust.id).select();
 check("another customer cannot remove it", (otherDelete.data ?? []).length === 0);
 
-// Change barber
-const swap = await cust.c.rpc("save_my_barber", { p_code: B.shop.code });
-const afterSwap = await cust.c.from("customer_barbers").select("*");
-check("changing the code replaces the saved barber (one row)", swap.data?.[0]?.id === B.shop.id && afterSwap.data?.length === 1, afterSwap);
+// Many barbers: adding a second code keeps the first
+const add2 = await cust.c.rpc("save_my_barber", { p_code: B.shop.code });
+const list2 = await cust.c.rpc("get_my_barbers");
+check("adding a second barber keeps the first (two rows, in order added)",
+  add2.data?.[0]?.id === B.shop.id && list2.data?.length === 2 && list2.data[0]?.id === A.shop.id && list2.data[1]?.id === B.shop.id, list2);
+const dup = await cust.c.rpc("save_my_barber", { p_code: A.shop.code });
+const list3 = await cust.c.rpc("get_my_barbers");
+check("re-entering a saved code does not duplicate it", !dup.error && list3.data?.length === 2, list3);
+const otherList2 = await other.c.rpc("get_my_barbers");
+check("another customer sees none of these barbers", (otherList2.data ?? []).length === 0, otherList2);
+const rmOne = await cust.c.from("customer_barbers").delete().eq("customer_id", cust.id).eq("barber_id", A.shop.id).select();
+const list4 = await cust.c.rpc("get_my_barbers");
+check("removing one barber leaves the other", rmOne.data?.length === 1 && list4.data?.length === 1 && list4.data[0]?.id === B.shop.id, list4);
 const forget = await cust.c.from("customer_barbers").delete().eq("customer_id", cust.id).select();
-const afterForget = await cust.c.rpc("get_my_barber");
-check("'تغيير الحلاق' clears the saved barber", (forget.data ?? []).length === 1 && (afterForget.data ?? []).length === 0, forget);
+const afterForget = await cust.c.rpc("get_my_barbers");
+check("removing the last barber empties the list", (forget.data ?? []).length === 1 && (afterForget.data ?? []).length === 0, forget);
 
 // 2. My bookings
 const day = (n: number) => new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Baghdad" }).format(new Date(Date.now() + n * 86400000));
