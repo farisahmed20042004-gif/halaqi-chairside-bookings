@@ -13,6 +13,79 @@ export function sumPaid(payments: { amount: number }[]) {
   return payments.reduce((s, p) => s + p.amount, 0);
 }
 
+/** One line of a money history: a debt the barber recorded, or a payment against one. */
+export type LedgerEntry = {
+  id: string;
+  debt_id: string;
+  barber_id: string;
+  type: "debt" | "payment";
+  amount: number;
+  note: string | null;
+  created_at: string;
+};
+
+export type BarberBalance = { barber_id: string; total: number; paid: number; remaining: number; entries: LedgerEntry[] };
+
+/** Customer view: debts and payments grouped by barber. Remaining = debts − payments. Owing barbers first. */
+export function balancesByBarber(entries: LedgerEntry[]): BarberBalance[] {
+  const map = new Map<string, BarberBalance>();
+  for (const e of entries) {
+    const g = map.get(e.barber_id) ?? { barber_id: e.barber_id, total: 0, paid: 0, remaining: 0, entries: [] };
+    if (e.type === "debt") g.total += e.amount;
+    else g.paid += e.amount;
+    g.entries.push(e);
+    map.set(e.barber_id, g);
+  }
+  const list = [...map.values()].map((g) => ({
+    ...g,
+    remaining: g.total - g.paid,
+    entries: [...g.entries].sort((a, b) => b.created_at.localeCompare(a.created_at)),
+  }));
+  return list.sort((a, b) => b.remaining - a.remaining || (b.entries[0]?.created_at ?? "").localeCompare(a.entries[0]?.created_at ?? ""));
+}
+
+type DebtLike = {
+  amount: number;
+  customer_id: string | null;
+  customer_name: string;
+  customer_phone: string | null;
+  payments: { amount: number }[];
+};
+
+/** Linked customers group by account; customers without an account group by name + phone. */
+export function customerKey(d: Pick<DebtLike, "customer_id" | "customer_name" | "customer_phone">) {
+  if (d.customer_id) return `c:${d.customer_id}`;
+  return `n:${d.customer_name.trim().replace(/\s+/g, " ")}|${(d.customer_phone ?? "").replace(/\D/g, "")}`;
+}
+
+export type CustomerAccount<T extends DebtLike> = {
+  key: string;
+  customer_id: string | null;
+  name: string;
+  phone: string | null;
+  debts: T[];
+  total: number;
+  paid: number;
+  remaining: number;
+};
+
+/** Barber view: each customer's debts with total, paid and remaining. Customers who still owe come first. */
+export function accountsByCustomer<T extends DebtLike>(debts: T[]): CustomerAccount<T>[] {
+  const map = new Map<string, CustomerAccount<T>>();
+  for (const d of debts) {
+    const key = customerKey(d);
+    const a = map.get(key) ?? { key, customer_id: d.customer_id, name: d.customer_name, phone: d.customer_phone, debts: [], total: 0, paid: 0, remaining: 0 };
+    a.debts.push(d);
+    a.total += d.amount;
+    a.paid += sumPaid(d.payments);
+    if (!a.phone && d.customer_phone) a.phone = d.customer_phone;
+    map.set(key, a);
+  }
+  return [...map.values()]
+    .map((a) => ({ ...a, remaining: a.total - a.paid }))
+    .sort((a, b) => Number(b.remaining > 0) - Number(a.remaining > 0) || a.name.localeCompare(b.name, "ar"));
+}
+
 export function normalizeCode(code: string) {
   return code.trim().toUpperCase().replace(/\s+/g, "");
 }
@@ -41,6 +114,9 @@ const messages: Record<string, string> = {
   services_price_check: "السعر غير صالح.",
   services_duration_minutes_check: "المدة يجب أن تكون بين ٥ و٤٨٠ دقيقة.",
   OVERPAYMENT: "المبلغ أكبر من المتبقي على الزبون.",
+  CUSTOMER_NOT_IN_SHOP: "هذا الزبون غير مرتبط بمحلك.",
+  DEBT_IN_FUTURE: "لا يمكن تسجيل دين بتاريخ لم يأتِ بعد.",
+  DEBT_TOO_OLD: "تاريخ الدين قديم جداً.",
   NOT_AUTHENTICATED: "يجب تسجيل الدخول أولاً.",
   "Invalid login credentials": "البريد الإلكتروني أو كلمة المرور غير صحيحة.",
   "User already registered": "هذا البريد مسجّل مسبقاً. سجّل الدخول بدلاً من ذلك.",
