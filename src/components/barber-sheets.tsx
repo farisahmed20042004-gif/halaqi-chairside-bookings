@@ -22,6 +22,7 @@ import {
 } from "@/lib/format";
 import {
   bookAppointment,
+  shopCustomersQuery,
   shopServicesQuery,
   slotsQuery,
   type AppointmentStatus,
