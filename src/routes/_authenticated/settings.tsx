@@ -64,7 +64,7 @@ function SettingsPage() {
                   <div className="min-w-0 flex-1">
                     <p className="truncate font-display text-base font-bold">{b.shop_name}</p>
                     <p className="truncate text-sm text-muted-foreground">{b.barber_name}</p>
-                    <p className="font-mono text-xs text-muted-foreground" dir="ltr">
+                    <p className="text-end font-mono text-xs text-muted-foreground" dir="ltr">
                       {b.code}
                     </p>
                   </div>
