@@ -22,6 +22,7 @@ import {
 } from "@/lib/format";
 import {
   bookAppointment,
+  shopCustomersQuery,
   shopServicesQuery,
   slotsQuery,
   type AppointmentStatus,
@@ -271,38 +272,51 @@ export function NewAppointmentSheet({ shop, open, onClose }: { shop: Shop; open:
 }
 
 /**
- * Record a debt. With `customer`, the debt is attached to that customer's account
- * and shows in their app right away; without it, it gets a one-time link code.
+ * Record a debt. The barber picks one of the shop's customers (the debt shows in their
+ * app right away) or types a name and phone for someone without an account.
  */
 export function NewDebtSheet({
   shop,
-  customer,
+  customer: fixedCustomer,
+  prefill,
   open,
   onClose,
 }: {
   shop: Shop;
   customer?: ShopCustomer | undefined;
+  /** Name and phone of a customer without an account (adding another debt for them). */
+  prefill?: { name: string; phone: string | null } | undefined;
   open: boolean;
   onClose: () => void;
 }) {
   const qc = useQueryClient();
   const tz = shop.timezone;
-  const [name, setName] = useState("");
-  const [phone, setPhone] = useState("");
+  const { data: shopCustomers = [] } = useQuery({ ...shopCustomersQuery(shop.id), enabled: open && !fixedCustomer && !prefill });
+  const [mode, setMode] = useState<"existing" | "new">(prefill ? "new" : "existing");
+  const [picked, setPicked] = useState<ShopCustomer | null>(null);
+  const [search, setSearch] = useState("");
+  const [name, setName] = useState(prefill?.name ?? "");
+  const [phone, setPhone] = useState(prefill?.phone ?? "");
   const [amount, setAmount] = useState("");
   const [paid, setPaid] = useState("");
   const [note, setNote] = useState("");
   const [date, setDate] = useState(() => todayKey(tz));
   const [time, setTime] = useState(() => timeKey(new Date(), tz));
+  const customer = fixedCustomer ?? (mode === "existing" ? picked : null);
   const amountNum = Number(amount || 0);
   const paidNum = Number(paid || 0);
   const incurredAt = date && time ? zonedToUtcIso(date, time, tz) : "";
   const inFuture = !!incurredAt && new Date(incurredAt).getTime() > Date.now() + 5 * 60_000;
-  const valid = (customer || name.trim().length >= 2) && amountNum > 0 && paidNum <= amountNum && !!incurredAt && !inFuture;
+  const hasWho = customer ? true : mode === "new" && name.trim().length >= 2;
+  const valid = hasWho && amountNum > 0 && paidNum <= amountNum && !!incurredAt && !inFuture;
+  const q = search.trim();
+  const matches = shopCustomers.filter((c) => !q || c.display_name.includes(q) || (c.phone ?? "").includes(q)).slice(0, 30);
 
   const reset = () => {
-    setName("");
-    setPhone("");
+    setPicked(null);
+    setSearch("");
+    setName(prefill?.name ?? "");
+    setPhone(prefill?.phone ?? "");
     setAmount("");
     setPaid("");
     setNote("");
@@ -346,23 +360,102 @@ export function NewDebtSheet({
     },
   });
 
+  const description = fixedCustomer
+    ? `على ${fixedCustomer.display_name} — يظهر في حسابه فوراً.`
+    : prefill
+      ? `على ${prefill.name}`
+      : "اختر الزبون، ثم المبلغ وما دفعه الآن.";
+
   return (
     <BottomSheet
       open={open}
       onClose={onClose}
       title="إضافة دين"
-      description={customer ? `على ${customer.display_name} — يظهر في حسابه فوراً.` : "المبلغ المستحق وما دفعه الزبون الآن."}
+      description={description}
       footer={
         <Button variant="ink" size="lg" className="w-full" disabled={!valid || save.isPending} onClick={() => save.mutate()}>
           {save.isPending ? <Loader2 className="animate-spin" /> : <HandCoins />} حفظ الدين
         </Button>
       }
     >
-      {!customer && (
+      {!fixedCustomer && !prefill && (
+        <div className="grid grid-cols-2 gap-2 rounded-xl bg-muted p-1">
+          {(
+            [
+              ["existing", "زبون من زبائني"],
+              ["new", "زبون جديد"],
+            ] as const
+          ).map(([m, label]) => (
+            <button
+              key={m}
+              type="button"
+              aria-pressed={mode === m}
+              onClick={() => setMode(m)}
+              className={cn("rounded-lg py-2.5 text-sm font-semibold transition", mode === m ? "bg-card shadow-card" : "text-muted-foreground")}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+      )}
+
+      {!fixedCustomer && !prefill && mode === "existing" && (
+        <div className="space-y-2">
+          {picked ? (
+            <div className="flex items-center justify-between gap-3 rounded-xl border border-primary bg-primary/5 px-4 py-3">
+              <div className="min-w-0">
+                <p className="truncate font-semibold">{picked.display_name}</p>
+                {picked.phone && (
+                  <p className="text-sm text-muted-foreground" dir="ltr">
+                    {picked.phone}
+                  </p>
+                )}
+                <p className="text-xs text-success">يظهر الدين في حسابه فوراً</p>
+              </div>
+              <Button variant="ghost" size="sm" onClick={() => setPicked(null)}>
+                تغيير
+              </Button>
+            </div>
+          ) : shopCustomers.length === 0 ? (
+            <p className="rounded-xl bg-muted px-3 py-3 text-sm text-muted-foreground">
+              لا يوجد زبائن مرتبطون بمحلك بعد. يظهر الزبون هنا بعد أول حجز له، أو اختر «زبون جديد».
+            </p>
+          ) : (
+            <>
+              <Label htmlFor="debt-search">ابحث بالاسم أو الهاتف</Label>
+              <Input id="debt-search" className="h-12 text-base" value={search} onChange={(e) => setSearch(e.target.value)} />
+              <ul className="max-h-56 divide-y overflow-y-auto rounded-xl border bg-card">
+                {matches.map((c) => (
+                  <li key={c.customer_id}>
+                    <button type="button" onClick={() => setPicked(c)} className="flex w-full items-center justify-between gap-3 px-4 py-3 text-start">
+                      <span className="truncate font-medium">{c.display_name}</span>
+                      {c.phone && (
+                        <span className="shrink-0 text-xs text-muted-foreground" dir="ltr">
+                          {c.phone}
+                        </span>
+                      )}
+                    </button>
+                  </li>
+                ))}
+                {matches.length === 0 && <li className="px-4 py-3 text-sm text-muted-foreground">لا نتائج.</li>}
+              </ul>
+            </>
+          )}
+        </div>
+      )}
+
+      {!fixedCustomer && (prefill || mode === "new") && (
         <>
           <div className="space-y-2">
             <Label htmlFor="debt-name">اسم الزبون</Label>
-            <Input id="debt-name" className="h-12 text-base" value={name} onChange={(e) => setName(e.target.value)} maxLength={80} />
+            <Input
+              id="debt-name"
+              className="h-12 text-base"
+              value={name}
+              readOnly={!!prefill}
+              onChange={(e) => setName(e.target.value)}
+              maxLength={80}
+            />
           </div>
           <div className="space-y-2">
             <Label htmlFor="debt-phone">الهاتف (اختياري)</Label>
@@ -372,10 +465,12 @@ export function NewDebtSheet({
               inputMode="tel"
               className="h-12 text-right text-base"
               value={phone}
+              readOnly={!!prefill}
               onChange={(e) => setPhone(e.target.value)}
               maxLength={20}
             />
           </div>
+          {!prefill && <p className="text-xs text-muted-foreground">زبون بلا حساب في التطبيق: يُحفظ الدين عندك فقط.</p>}
         </>
       )}
       <div className="grid grid-cols-2 gap-3">

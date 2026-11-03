@@ -1,7 +1,8 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Link, useRouterState } from "@tanstack/react-router";
+import { Link, useRouteContext, useRouterState } from "@tanstack/react-router";
 import { ArrowRight, Bell, CalendarDays, LayoutDashboard, Loader2, Scissors, Settings, Wallet, type LucideIcon } from "lucide-react";
-import { useState, type ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
+import { toast } from "sonner";
 
 import {
   AlertDialog,
@@ -14,8 +15,9 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetDescription, SheetFooter, SheetHeader, SheetTitle } from "@/components/ui/sheet";
-import { dayKey, formatDayKey, formatNumber, formatTime } from "@/lib/format";
-import { markNotificationsRead, notificationsQuery, type AppointmentStatus } from "@/lib/halaqi-api";
+import { supabase } from "@/integrations/supabase/client";
+import { dayKey, formatDayKey, formatMoney, formatNumber, formatTime } from "@/lib/format";
+import { markNotificationsRead, notificationsQuery, type AppointmentStatus, type Notification } from "@/lib/halaqi-api";
 import type { DebtStatus } from "@/lib/rules";
 import { cn } from "@/lib/utils";
 
@@ -71,7 +73,7 @@ export function LoadingScreen({ label = "جارٍ التحميل…" }: { label?
 }
 
 type NavItem = {
-  to: "/barber" | "/appointments" | "/services" | "/debts" | "/customer" | "/my-bookings" | "/settings";
+  to: "/barber" | "/appointments" | "/services" | "/debts" | "/customer" | "/my-bookings" | "/my-debts" | "/settings";
   label: string;
   icon: LucideIcon;
 };
@@ -86,6 +88,7 @@ const barberNavItems: NavItem[] = [
 const customerNavItems: NavItem[] = [
   { to: "/customer", label: "حلاقي", icon: Scissors },
   { to: "/my-bookings", label: "مواعيدي", icon: CalendarDays },
+  { to: "/my-debts", label: "ديوني", icon: Wallet },
   { to: "/settings", label: "الإعدادات", icon: Settings },
 ];
 
@@ -94,7 +97,43 @@ export function BarberNav() {
 }
 
 export function CustomerNav() {
+  useCustomerLiveMoney();
   return <BottomNav items={customerNavItems} />;
+}
+
+/**
+ * While any customer screen is open: when the barber records a debt or a payment, the
+ * database adds a notification for this customer; show it right away and refresh balances.
+ */
+function useCustomerLiveMoney() {
+  const { user } = useRouteContext({ from: "/_authenticated" });
+  const qc = useQueryClient();
+  useEffect(() => {
+    const channel = supabase
+      .channel(`customer-money-${Math.random().toString(36).slice(2)}`)
+      .on(
+        "postgres_changes",
+        { event: "INSERT", schema: "public", table: "notifications", filter: `user_id=eq.${user.id}` },
+        (payload) => {
+          const n = payload.new as Notification;
+          qc.invalidateQueries({ queryKey: ["notifications"] });
+          if (n.kind === "debt_added" || n.kind === "payment_recorded") {
+            qc.invalidateQueries({ queryKey: ["my-ledger"] });
+            qc.invalidateQueries({ queryKey: ["my-debts"] });
+            toast(n.title, { description: moneyLine(n) ?? undefined });
+          }
+        },
+      )
+      .subscribe();
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [user.id, qc]);
+}
+
+function moneyLine(n: Pick<Notification, "amount" | "balance">) {
+  if (n.amount == null) return null;
+  return `المبلغ ${formatMoney(n.amount)}${n.balance != null ? ` · المتبقي عليك ${formatMoney(n.balance)}` : ""}`;
 }
 
 function BottomNav({ items }: { items: NavItem[] }) {
@@ -325,7 +364,7 @@ export function NotificationsBell({ tone = "light" }: { tone?: "light" | "dark" 
       </button>
       <BottomSheet open={open} onClose={() => setOpen(false)} title="الإشعارات" footer={null}>
         {data.length === 0 ? (
-          <EmptyState title="لا إشعارات" hint="ستظهر هنا إشعارات إلغاء المواعيد." />
+          <EmptyState title="لا إشعارات" hint="ستظهر هنا إشعارات المواعيد والديون والتسديدات." />
         ) : (
           <ul className="space-y-2">
             {data.map((n) => (
@@ -337,6 +376,7 @@ export function NotificationsBell({ tone = "light" }: { tone?: "light" | "dark" 
                     موعد {formatDayKey(dayKey(n.starts_at, n.timezone))} · {formatTime(n.starts_at, n.timezone)}
                   </p>
                 )}
+                {moneyLine(n) && <p className="mt-1 text-sm font-semibold">{moneyLine(n)}</p>}
                 <p className="mt-1 text-[11px] text-muted-foreground">
                   {formatDayKey(dayKey(n.created_at, n.timezone ?? "Asia/Baghdad"), { day: "numeric", month: "short" })} ·{" "}
                   {formatTime(n.created_at, n.timezone ?? "Asia/Baghdad")}

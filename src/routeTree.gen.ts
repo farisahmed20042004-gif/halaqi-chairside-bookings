@@ -17,6 +17,7 @@ import { Route as AuthenticatedBarberRouteImport } from './routes/_authenticated
 import { Route as AuthenticatedCustomerRouteImport } from './routes/_authenticated/customer'
 import { Route as AuthenticatedDebtsRouteImport } from './routes/_authenticated/debts'
 import { Route as AuthenticatedMyBookingsRouteImport } from './routes/_authenticated/my-bookings'
+import { Route as AuthenticatedMyDebtsRouteImport } from './routes/_authenticated/my-debts'
 import { Route as AuthenticatedServicesRouteImport } from './routes/_authenticated/services'
 import { Route as AuthenticatedSettingsRouteImport } from './routes/_authenticated/settings'
 
@@ -60,6 +61,11 @@ const AuthenticatedMyBookingsRoute = AuthenticatedMyBookingsRouteImport.update({
   path: '/my-bookings',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const AuthenticatedMyDebtsRoute = AuthenticatedMyDebtsRouteImport.update({
+  id: '/my-debts',
+  path: '/my-debts',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
 const AuthenticatedServicesRoute = AuthenticatedServicesRouteImport.update({
   id: '/services',
   path: '/services',
@@ -79,6 +85,7 @@ export interface FileRoutesByFullPath {
   '/customer': typeof AuthenticatedCustomerRoute
   '/debts': typeof AuthenticatedDebtsRoute
   '/my-bookings': typeof AuthenticatedMyBookingsRoute
+  '/my-debts': typeof AuthenticatedMyDebtsRoute
   '/services': typeof AuthenticatedServicesRoute
   '/settings': typeof AuthenticatedSettingsRoute
 }
@@ -90,6 +97,7 @@ export interface FileRoutesByTo {
   '/customer': typeof AuthenticatedCustomerRoute
   '/debts': typeof AuthenticatedDebtsRoute
   '/my-bookings': typeof AuthenticatedMyBookingsRoute
+  '/my-debts': typeof AuthenticatedMyDebtsRoute
   '/services': typeof AuthenticatedServicesRoute
   '/settings': typeof AuthenticatedSettingsRoute
 }
@@ -103,6 +111,7 @@ export interface FileRoutesById {
   '/_authenticated/customer': typeof AuthenticatedCustomerRoute
   '/_authenticated/debts': typeof AuthenticatedDebtsRoute
   '/_authenticated/my-bookings': typeof AuthenticatedMyBookingsRoute
+  '/_authenticated/my-debts': typeof AuthenticatedMyDebtsRoute
   '/_authenticated/services': typeof AuthenticatedServicesRoute
   '/_authenticated/settings': typeof AuthenticatedSettingsRoute
 }
@@ -116,6 +125,7 @@ export interface FileRouteTypes {
     | '/customer'
     | '/debts'
     | '/my-bookings'
+    | '/my-debts'
     | '/services'
     | '/settings'
   fileRoutesByTo: FileRoutesByTo
@@ -127,6 +137,7 @@ export interface FileRouteTypes {
     | '/customer'
     | '/debts'
     | '/my-bookings'
+    | '/my-debts'
     | '/services'
     | '/settings'
   id:
@@ -139,6 +150,7 @@ export interface FileRouteTypes {
     | '/_authenticated/customer'
     | '/_authenticated/debts'
     | '/_authenticated/my-bookings'
+    | '/_authenticated/my-debts'
     | '/_authenticated/services'
     | '/_authenticated/settings'
   fileRoutesById: FileRoutesById
@@ -207,6 +219,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedMyBookingsRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/my-debts': {
+      id: '/_authenticated/my-debts'
+      path: '/my-debts'
+      fullPath: '/my-debts'
+      preLoaderRoute: typeof AuthenticatedMyDebtsRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/services': {
       id: '/_authenticated/services'
       path: '/services'
@@ -230,6 +249,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedCustomerRoute: typeof AuthenticatedCustomerRoute
   AuthenticatedDebtsRoute: typeof AuthenticatedDebtsRoute
   AuthenticatedMyBookingsRoute: typeof AuthenticatedMyBookingsRoute
+  AuthenticatedMyDebtsRoute: typeof AuthenticatedMyDebtsRoute
   AuthenticatedServicesRoute: typeof AuthenticatedServicesRoute
   AuthenticatedSettingsRoute: typeof AuthenticatedSettingsRoute
 }
@@ -240,6 +260,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedCustomerRoute: AuthenticatedCustomerRoute,
   AuthenticatedDebtsRoute: AuthenticatedDebtsRoute,
   AuthenticatedMyBookingsRoute: AuthenticatedMyBookingsRoute,
+  AuthenticatedMyDebtsRoute: AuthenticatedMyDebtsRoute,
   AuthenticatedServicesRoute: AuthenticatedServicesRoute,
   AuthenticatedSettingsRoute: AuthenticatedSettingsRoute,
 }

@@ -50,6 +50,13 @@
       "when": 1793603155346,
       "tag": "0006_customer_many_saved_barbers",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1793732853186,
+      "tag": "0007_customer_debts_ledger_realtime_notifications",
+      "breakpoints": true
     }
   ]
 }

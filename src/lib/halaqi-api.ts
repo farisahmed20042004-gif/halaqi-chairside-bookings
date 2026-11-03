@@ -3,6 +3,7 @@ import { redirect } from "@tanstack/react-router";
 
 import { supabase } from "@/integrations/supabase/client";
 import type { Database } from "@/integrations/supabase/types";
+import type { LedgerEntry } from "@/lib/rules";
 
 type Tables = Database["public"]["Tables"];
 type Fns = Database["public"]["Functions"];
@@ -347,6 +348,37 @@ export async function removeMyBarber(barberId: string) {
   const { error } = await supabase.from("customer_barbers").delete().eq("customer_id", id).eq("barber_id", barberId);
   if (error) throw error;
 }
+
+/**
+ * The customer's own money history (every debt and payment, newest first) from the
+ * `customer_debts` ledger. Row rules on debts/payments limit it to this customer.
+ */
+export const myLedgerQuery = () =>
+  queryOptions({
+    queryKey: ["my-ledger"],
+    queryFn: async (): Promise<LedgerEntry[]> => {
+      const id = await currentUserId();
+      const { data, error } = await supabase
+        .from("customer_debts")
+        .select("id, debt_id, barber_id, type, amount, note, created_at")
+        .eq("customer_id", id)
+        .order("created_at", { ascending: false })
+        .limit(1000);
+      if (error) throw error;
+      return data
+        .filter((r) => r.id && r.debt_id && r.barber_id && r.created_at && (r.type === "debt" || r.type === "payment"))
+        .map((r) => ({
+          id: r.id!,
+          debt_id: r.debt_id!,
+          barber_id: r.barber_id!,
+          type: r.type as LedgerEntry["type"],
+          amount: Number(r.amount ?? 0),
+          note: r.note,
+          created_at: r.created_at!,
+        }));
+    },
+    refetchInterval: 60_000,
+  });
 
 export const myDebtsQuery = () =>
   queryOptions({

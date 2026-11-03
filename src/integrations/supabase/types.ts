@@ -227,9 +227,12 @@ export type Database = {
       }
       notifications: {
         Row: {
+          amount: number | null
           appointment_id: string | null
+          balance: number | null
           body: string | null
           created_at: string
+          debt_id: string | null
           id: string
           kind: string
           read_at: string | null
@@ -239,9 +242,12 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          amount?: number | null
           appointment_id?: string | null
+          balance?: number | null
           body?: string | null
           created_at?: string
+          debt_id?: string | null
           id?: string
           kind: string
           read_at?: string | null
@@ -251,9 +257,12 @@ export type Database = {
           user_id: string
         }
         Update: {
+          amount?: number | null
           appointment_id?: string | null
+          balance?: number | null
           body?: string | null
           created_at?: string
+          debt_id?: string | null
           id?: string
           kind?: string
           read_at?: string | null
@@ -268,6 +277,13 @@ export type Database = {
             columns: ["appointment_id"]
             isOneToOne: false
             referencedRelation: "appointments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "notifications_debt_id_fkey"
+            columns: ["debt_id"]
+            isOneToOne: false
+            referencedRelation: "debts"
             referencedColumns: ["id"]
           },
         ]
@@ -443,7 +459,21 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      customer_debts: {
+        Row: {
+          amount: number | null
+          barber_id: string | null
+          created_at: string | null
+          customer_id: string | null
+          customer_name: string | null
+          customer_phone: string | null
+          debt_id: string | null
+          id: string | null
+          note: string | null
+          type: string | null
+        }
+        Relationships: []
+      }
     }
     Functions: {
       ar_normalize: { Args: { t: string }; Returns: string }
@@ -491,6 +521,10 @@ export type Database = {
       }
       cancel_my_appointment: { Args: { p_id: string }; Returns: undefined }
       claim_debt: { Args: { p_code: string }; Returns: string }
+      customer_shop_balance: {
+        Args: { p_barber: string; p_customer: string }
+        Returns: number
+      }
       find_barber_by_code: {
         Args: { p_code: string }
         Returns: {

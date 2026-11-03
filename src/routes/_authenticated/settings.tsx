@@ -1,7 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useMutation, useQueryClient, useSuspenseQuery } from "@tanstack/react-query";
 import { useState } from "react";
-import { LogOut, Plus, Scissors, Trash2, User } from "lucide-react";
+import { LogOut, Plus, Scissors, Trash2, User, Wallet } from "lucide-react";
 import { toast } from "sonner";
 
 import { ConfirmDialog, CustomerNav, MobileFrame, PageHeader } from "@/components/app-ui";
@@ -101,6 +101,11 @@ function SettingsPage() {
           <p className="text-sm text-muted-foreground" dir="ltr">
             {user.email}
           </p>
+          <Button asChild variant="outline" size="lg" className="mt-3 w-full bg-card">
+            <Link to="/my-debts">
+              <Wallet /> ديوني
+            </Link>
+          </Button>
         </section>
 
         <Button variant="outline" size="lg" className="w-full bg-card text-destructive" onClick={signOut}>

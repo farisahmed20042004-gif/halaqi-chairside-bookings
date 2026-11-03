@@ -14,6 +14,8 @@ import {
   SAVED_BARBERS_KEY,
   savedCodesFor,
   serviceFormError,
+  accountsByCustomer,
+  balancesByBarber,
 } from "@/lib/rules";
 
 describe("debt payment status", () => {
@@ -92,4 +94,54 @@ describe("saved barbers on this phone", () => {
     expect(savedCodesFor(removeSavedBarber(list, "u", "HLQ-AAAAAA"), "u")).toEqual(["HLQ-BBBBBB"]);
   });
   it("ignores a damaged stored list", () => expect(parseSavedBarbers("{not json")).toEqual([]));
+});
+
+describe("money balances", () => {
+  const e = (id: string, barber_id: string, type: "debt" | "payment", amount: number, created_at: string) => ({
+    id,
+    debt_id: "d",
+    barber_id,
+    type,
+    amount,
+    note: null,
+    created_at,
+  });
+  it("customer remaining per barber is debts minus payments", () => {
+    const [a] = balancesByBarber([
+      e("1", "A", "debt", 25000, "2026-11-01T10:00:00Z"),
+      e("2", "A", "payment", 10000, "2026-11-02T10:00:00Z"),
+    ]);
+    expect(a).toMatchObject({ total: 25000, paid: 10000, remaining: 15000 });
+  });
+  it("keeps each barber's balance separate", () => {
+    const list = balancesByBarber([e("1", "A", "debt", 5000, "2026-11-01T10:00:00Z"), e("2", "B", "debt", 8000, "2026-11-01T11:00:00Z")]);
+    expect(list.map((g) => [g.barber_id, g.remaining])).toEqual([
+      ["B", 8000],
+      ["A", 5000],
+    ]);
+  });
+  it("a fully paid barber shows 0 remaining", () => {
+    const [a] = balancesByBarber([e("1", "A", "debt", 5000, "2026-11-01T10:00:00Z"), e("2", "A", "payment", 5000, "2026-11-01T12:00:00Z")]);
+    expect(a!.remaining).toBe(0);
+  });
+
+  const debt = (customer_id: string | null, name: string, phone: string | null, amount: number, paid: number[]) => ({
+    customer_id,
+    customer_name: name,
+    customer_phone: phone,
+    amount,
+    payments: paid.map((p) => ({ amount: p })),
+  });
+  it("barber sees one account per linked customer with remaining balance", () => {
+    const [a] = accountsByCustomer([debt("u1", "علي", null, 20000, [5000]), debt("u1", "علي", null, 10000, [10000])]);
+    expect(a).toMatchObject({ total: 30000, paid: 15000, remaining: 15000 });
+    expect(a!.debts).toHaveLength(2);
+  });
+  it("customers without an account group by name and phone", () => {
+    const list = accountsByCustomer([debt(null, "حسن", "0770 111", 1000, []), debt(null, "حسن", "0770111", 2000, []), debt(null, "حسن", "0780", 500, [])]);
+    expect(list).toHaveLength(2);
+  });
+  it("an account and a typed name are never merged", () => {
+    expect(accountsByCustomer([debt("u1", "حسن", null, 1000, []), debt(null, "حسن", null, 1000, [])])).toHaveLength(2);
+  });
 });
