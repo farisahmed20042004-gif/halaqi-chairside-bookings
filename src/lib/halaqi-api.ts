@@ -40,12 +40,12 @@ async function currentUserId() {
   return data.user.id;
 }
 
-export const myRoleQuery = () =>
+/** The account type stored in the database, cached per account so a previous user's role is never reused. */
+export const roleQuery = (userId: string) =>
   queryOptions({
-    queryKey: ["my-role"],
+    queryKey: ["role", userId],
     queryFn: async (): Promise<Role> => {
-      const id = await currentUserId();
-      const { data, error } = await supabase.from("user_roles").select("role").eq("user_id", id).maybeSingle();
+      const { data, error } = await supabase.from("user_roles").select("role").eq("user_id", userId).maybeSingle();
       if (error) throw error;
       return data?.role ?? "customer";
     },
@@ -53,8 +53,8 @@ export const myRoleQuery = () =>
   });
 
 /** Route guard: send the account to its own area when it opens the other role's page. */
-export async function requireRole(queryClient: QueryClient, role: Role) {
-  const actual = await queryClient.ensureQueryData(myRoleQuery());
+export async function requireRole(context: { queryClient: QueryClient; user: { id: string } }, role: Role) {
+  const actual = await context.queryClient.ensureQueryData(roleQuery(context.user.id));
   if (actual !== role) throw redirect({ to: actual === "barber" ? "/barber" : "/customer", replace: true });
 }
 
