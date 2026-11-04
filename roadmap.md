@@ -15,4 +15,6 @@
 - [x] "خدماتي": barbers add/edit/hide/delete services; customers pick a service before choosing a time (tested in DB + browser)
 - [x] Customer enters barber code once (saved on phone + account), "تغيير الحلاق" in settings
 - [x] "مواعيدي" page: status badges, newest first, live updates, big green card for the next confirmed booking
-- [ ] Later (not started): notifications, offline mode, editing working hours after setup
+- [x] Live debts: barber picks a customer or types name+phone, per-customer balance and payment history; customer «ديوني» grouped by barber; live in-app alerts for new debt/payment (tested in DB + browser)
+- [ ] Publish the live-debts update — waiting on user approval
+- [ ] Later (not started): phone push notifications, offline mode, editing working hours after setup
