@@ -9,7 +9,7 @@ import { NoShop } from "@/components/no-shop";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { supabase } from "@/integrations/supabase/client";
-import { dayKey, formatDayKey, formatMoney, formatTime } from "@/lib/format";
+import { dayKey, formatDayKey, formatMoney, formatNumber, formatTime } from "@/lib/format";
 import { myShopQuery, shopCustomersQuery, shopDebtsQuery, type Debt, type Shop, type ShopCustomer } from "@/lib/halaqi-api";
 import { accountsByCustomer, debtStatus, sumPaid, type CustomerAccount } from "@/lib/rules";
 import { cn } from "@/lib/utils";
@@ -92,7 +92,7 @@ function DebtsList({ shop }: { shop: Shop }) {
           <div className="rounded-2xl bg-gradient-ink p-4 text-ink-foreground shadow-lift">
             <p className="text-xs text-ink-foreground/70">المتبقي على الزبائن</p>
             <p className="mt-1 text-xl font-bold text-brass">{formatMoney(outstanding)}</p>
-            <p className="mt-0.5 text-[11px] text-ink-foreground/70">{owing.length} زبون عليه دين</p>
+            <p className="mt-0.5 text-[11px] text-ink-foreground/70">{formatNumber(owing.length)} زبون عليه دين</p>
           </div>
           <div className="rounded-2xl border bg-card p-4 shadow-card">
             <p className="text-xs text-muted-foreground">المُحصّل من الديون</p>
@@ -148,7 +148,7 @@ function DebtsList({ shop }: { shop: Shop }) {
                       </p>
                     )}
                     <p className="mt-1 text-xs text-muted-foreground">
-                      {a.debts.length} دين · دفع {formatMoney(a.paid)} من {formatMoney(a.total)}
+                      {formatNumber(a.debts.length)} دين · دفع {formatMoney(a.paid)} من {formatMoney(a.total)}
                     </p>
                   </div>
                   <div className="flex shrink-0 flex-col items-end gap-1">
