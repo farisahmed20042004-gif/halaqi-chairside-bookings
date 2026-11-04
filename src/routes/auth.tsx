@@ -1,4 +1,5 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { Loader2, Scissors, User } from "lucide-react";
 
@@ -6,7 +7,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { supabase } from "@/integrations/supabase/client";
-import { arabicError, safeRedirect } from "@/lib/rules";
+import { roleQuery } from "@/lib/halaqi-api";
+import { arabicError, landingFor } from "@/lib/rules";
 import { cn } from "@/lib/utils";
 
 type Mode = "signin" | "signup";
@@ -37,6 +39,7 @@ export const Route = createFileRoute("/auth")({
 function AuthPage() {
   const search = Route.useSearch();
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const [mode, setMode] = useState<Mode>(search.mode ?? "signup");
   const [accountType, setAccountType] = useState<AccountType>(search.as ?? "customer");
   const [fullName, setFullName] = useState("");
@@ -46,18 +49,13 @@ function AuthPage() {
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
 
-  async function goNext(userId: string, type?: AccountType) {
-    const target = safeRedirect(search.redirect);
-    if (target) {
-      navigate({ href: target, replace: true });
-      return;
-    }
-    let dest: AccountType = type ?? "customer";
-    if (!type) {
-      const { data } = await supabase.from("barbers").select("id").eq("owner_id", userId).maybeSingle();
-      dest = data ? "barber" : "customer";
-    }
-    navigate({ to: dest === "barber" ? "/barber" : "/customer", replace: true });
+  // Always read the account type saved in the database for the account that just signed in,
+  // after dropping anything cached for a previous account on this phone.
+  async function goNext(userId: string) {
+    await queryClient.cancelQueries();
+    queryClient.clear();
+    const role = await queryClient.fetchQuery(roleQuery(userId));
+    navigate({ href: landingFor(role, search.redirect), replace: true });
   }
 
   async function submit(e: React.FormEvent) {
@@ -78,7 +76,7 @@ function AuthPage() {
         });
         if (error) throw error;
         if (!data.session || !data.user) throw new Error("تعذّر إكمال التسجيل.");
-        await goNext(data.user.id, accountType);
+        await goNext(data.user.id);
       } else {
         const { data, error } = await supabase.auth.signInWithPassword({ email: email.trim(), password });
         if (error) throw error;

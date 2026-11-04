@@ -10,11 +10,12 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { supabase } from "@/integrations/supabase/client";
 import { dayKey, formatDayKey, formatMoney, formatNumber, formatTime } from "@/lib/format";
-import { myShopQuery, shopCustomersQuery, shopDebtsQuery, type Debt, type Shop, type ShopCustomer } from "@/lib/halaqi-api";
+import { myShopQuery, requireRole, shopCustomersQuery, shopDebtsQuery, type Debt, type Shop, type ShopCustomer } from "@/lib/halaqi-api";
 import { accountsByCustomer, debtStatus, sumPaid, type CustomerAccount } from "@/lib/rules";
 import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/_authenticated/debts")({
+  beforeLoad: ({ context }) => requireRole(context, "barber"),
   loader: ({ context }) => context.queryClient.ensureQueryData(myShopQuery()),
   head: () => ({
     meta: [

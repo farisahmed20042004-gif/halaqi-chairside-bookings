@@ -12,7 +12,7 @@ import { cn } from "@/lib/utils";
 const TZ = "Asia/Baghdad";
 
 export const Route = createFileRoute("/_authenticated/my-debts")({
-  beforeLoad: ({ context }) => requireRole(context.queryClient, "customer"),
+  beforeLoad: ({ context }) => requireRole(context, "customer"),
   loader: ({ context }) =>
     Promise.all([context.queryClient.ensureQueryData(myLedgerQuery()), context.queryClient.ensureQueryData(myShopsQuery())]),
   head: () => ({

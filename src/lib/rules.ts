@@ -98,6 +98,29 @@ export function safeRedirect(path: unknown): string | null {
   return path;
 }
 
+export type AccountRole = "barber" | "customer";
+const ROLE_PAGES: Record<AccountRole, string[]> = {
+  barber: ["/barber", "/appointments", "/debts", "/services"],
+  customer: ["/customer", "/my-bookings", "/my-debts", "/settings"],
+};
+
+export const roleHome = (role: AccountRole) => (role === "barber" ? "/barber" : "/customer");
+
+/** Which account type a page belongs to (null for public pages). */
+export function pageRole(path: string): AccountRole | null {
+  const p = path.split(/[?#]/)[0]!.replace(/\/+$/, "") || "/";
+  for (const role of ["barber", "customer"] as const) {
+    if (ROLE_PAGES[role].some((r) => p === r || p.startsWith(r + "/"))) return role;
+  }
+  return null;
+}
+
+/** Where to go after sign-in: the requested page only if it belongs to this account type, else its own home. */
+export function landingFor(role: AccountRole, redirect: unknown): string {
+  const target = safeRedirect(redirect);
+  return target && pageRole(target) === role ? target : roleHome(role);
+}
+
 const messages: Record<string, string> = {
   SLOT_TAKEN: "هذا الوقت حُجز للتو. اختر وقتاً آخر.",
   SLOT_IN_PAST: "هذا الوقت مضى. اختر وقتاً قادماً.",
