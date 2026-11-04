@@ -55,11 +55,16 @@ const ch1 = cust1.c
 const ch2 = cust2.c
   .channel(`t2-${stamp}`)
   .on("postgres_changes", { event: "*", schema: "public", table: "debts" }, (p) => got2Debts.push(p.new));
+// Ready once the server confirms the database feed ("Subscribed to PostgreSQL"), not just the socket.
 const subscribed = (ch: ReturnType<C["channel"]>) =>
   new Promise<string>((res) => {
-    ch.subscribe((s) => {
-      if (s === "SUBSCRIBED" || s === "CHANNEL_ERROR" || s === "TIMED_OUT") res(s);
+    ch.on("system", {}, (p: { status?: string; extension?: string }) => {
+      if (p.extension === "postgres_changes") res(p.status === "ok" ? "SUBSCRIBED" : "DB_FEED_ERROR");
     });
+    ch.subscribe((s) => {
+      if (s === "CHANNEL_ERROR" || s === "TIMED_OUT") res(s);
+    });
+    setTimeout(() => res("NO_DB_FEED"), 15000);
   });
 const [s1, s2] = await Promise.all([subscribed(ch1), subscribed(ch2)]);
 check("customer subscribes to live updates", s1 === "SUBSCRIBED" && s2 === "SUBSCRIBED", [s1, s2]);
