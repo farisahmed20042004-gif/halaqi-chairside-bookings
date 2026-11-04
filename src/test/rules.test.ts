@@ -16,6 +16,8 @@ import {
   serviceFormError,
   accountsByCustomer,
   balancesByBarber,
+  landingFor,
+  pageRole,
 } from "@/lib/rules";
 
 describe("debt payment status", () => {
@@ -144,4 +146,22 @@ describe("money balances", () => {
   it("an account and a typed name are never merged", () => {
     expect(accountsByCustomer([debt("u1", "حسن", null, 1000, []), debt(null, "حسن", null, 1000, [])])).toHaveLength(2);
   });
+});
+
+describe("landing page after sign-in", () => {
+  it("sends a customer to the customer page even when the barber page was requested", () =>
+    expect(landingFor("customer", "/barber")).toBe("/customer"));
+  it("sends a barber to the barber dashboard even when a customer page was requested", () =>
+    expect(landingFor("barber", "/customer?code=HLQ-ABC123")).toBe("/barber"));
+  it("keeps a customer's own requested page, such as a shop link", () =>
+    expect(landingFor("customer", "/customer?code=HLQ-ABC123")).toBe("/customer?code=HLQ-ABC123"));
+  it("keeps a barber's own requested page", () => expect(landingFor("barber", "/debts")).toBe("/debts"));
+  it("goes home when nothing was requested", () => {
+    expect(landingFor("barber", undefined)).toBe("/barber");
+    expect(landingFor("customer", undefined)).toBe("/customer");
+  });
+  it("treats every barber page as barber-only", () =>
+    expect(["/barber", "/appointments", "/debts", "/services"].map(pageRole)).toEqual(["barber", "barber", "barber", "barber"]));
+  it("treats every customer page as customer-only", () =>
+    expect(["/customer", "/my-bookings", "/my-debts", "/settings"].map(pageRole)).toEqual(["customer", "customer", "customer", "customer"]));
 });
