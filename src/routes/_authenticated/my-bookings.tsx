@@ -13,7 +13,7 @@ import { arabicError, canCustomerCancel, customerBookingState, nextConfirmedBook
 import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/_authenticated/my-bookings")({
-  beforeLoad: ({ context }) => requireRole(context.queryClient, "customer"),
+  beforeLoad: ({ context }) => requireRole(context, "customer"),
   loader: ({ context }) => context.queryClient.ensureQueryData(myBookingsQuery()),
   head: () => ({
     meta: [

@@ -8,9 +8,10 @@ import { NewAppointmentSheet, useSetAppointmentStatus } from "@/components/barbe
 import { NoShop } from "@/components/no-shop";
 import { Button } from "@/components/ui/button";
 import { dayKey, formatDayKey, formatNumber, formatTime, relativeDayLabel, todayKey } from "@/lib/format";
-import { myShopQuery, shopAppointmentsQuery, type AppointmentStatus, type Shop } from "@/lib/halaqi-api";
+import { myShopQuery, requireRole, shopAppointmentsQuery, type AppointmentStatus, type Shop } from "@/lib/halaqi-api";
 
 export const Route = createFileRoute("/_authenticated/appointments")({
+  beforeLoad: ({ context }) => requireRole(context, "barber"),
   loader: ({ context }) => context.queryClient.ensureQueryData(myShopQuery()),
   head: () => ({
     meta: [

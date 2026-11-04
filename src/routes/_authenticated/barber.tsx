@@ -11,11 +11,12 @@ import { ShopForm } from "@/components/shop-form";
 import { Button } from "@/components/ui/button";
 import { useSignOut } from "@/hooks/use-session";
 import { dayKey, formatDayKey, formatMoney, formatNumber, formatTime, todayKey } from "@/lib/format";
-import { myShopQuery, profileQuery, shopAppointmentsQuery, shopDebtsQuery, type Shop } from "@/lib/halaqi-api";
+import { myShopQuery, profileQuery, requireRole, shopAppointmentsQuery, shopDebtsQuery, type Shop } from "@/lib/halaqi-api";
 import { debtStatus, sumPaid } from "@/lib/rules";
 import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/_authenticated/barber")({
+  beforeLoad: ({ context }) => requireRole(context, "barber"),
   loader: ({ context }) =>
     Promise.all([context.queryClient.ensureQueryData(myShopQuery()), context.queryClient.ensureQueryData(profileQuery())]),
   head: () => ({

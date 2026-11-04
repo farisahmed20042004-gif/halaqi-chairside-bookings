@@ -12,7 +12,7 @@ import { arabicError } from "@/lib/rules";
 import { removeSavedCode } from "@/lib/saved-barber";
 
 export const Route = createFileRoute("/_authenticated/settings")({
-  beforeLoad: ({ context }) => requireRole(context.queryClient, "customer"),
+  beforeLoad: ({ context }) => requireRole(context, "customer"),
   loader: ({ context }) =>
     Promise.all([context.queryClient.ensureQueryData(profileQuery()), context.queryClient.ensureQueryData(myBarbersQuery())]),
   head: () => ({

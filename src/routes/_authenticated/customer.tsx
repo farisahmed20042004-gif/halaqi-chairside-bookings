@@ -33,7 +33,7 @@ export const Route = createFileRoute("/_authenticated/customer")({
     if (s["add"] === true || s["add"] === "true" || s["add"] === "1") out.add = true;
     return out;
   },
-  beforeLoad: ({ context }) => requireRole(context.queryClient, "customer"),
+  beforeLoad: ({ context }) => requireRole(context, "customer"),
   loader: ({ context }) =>
     Promise.all([context.queryClient.ensureQueryData(profileQuery()), context.queryClient.ensureQueryData(myBarbersQuery())]),
   head: () => ({

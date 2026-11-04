@@ -46,18 +46,13 @@ function AuthPage() {
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
 
-  async function goNext(userId: string, type?: AccountType) {
-    const target = safeRedirect(search.redirect);
-    if (target) {
-      navigate({ href: target, replace: true });
-      return;
-    }
-    let dest: AccountType = type ?? "customer";
-    if (!type) {
-      const { data } = await supabase.from("barbers").select("id").eq("owner_id", userId).maybeSingle();
-      dest = data ? "barber" : "customer";
-    }
-    navigate({ to: dest === "barber" ? "/barber" : "/customer", replace: true });
+  // Always read the account type saved in the database for the account that just signed in,
+  // after dropping anything cached for a previous account on this phone.
+  async function goNext(userId: string) {
+    await queryClient.cancelQueries();
+    queryClient.clear();
+    const role = await queryClient.fetchQuery(roleQuery(userId));
+    navigate({ href: landingFor(role, search.redirect), replace: true });
   }
 
   async function submit(e: React.FormEvent) {
