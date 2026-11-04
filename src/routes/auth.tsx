@@ -1,4 +1,5 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { Loader2, Scissors, User } from "lucide-react";
 
@@ -6,7 +7,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { supabase } from "@/integrations/supabase/client";
-import { arabicError, safeRedirect } from "@/lib/rules";
+import { roleQuery } from "@/lib/halaqi-api";
+import { arabicError, landingFor } from "@/lib/rules";
 import { cn } from "@/lib/utils";
 
 type Mode = "signin" | "signup";
@@ -37,6 +39,7 @@ export const Route = createFileRoute("/auth")({
 function AuthPage() {
   const search = Route.useSearch();
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const [mode, setMode] = useState<Mode>(search.mode ?? "signup");
   const [accountType, setAccountType] = useState<AccountType>(search.as ?? "customer");
   const [fullName, setFullName] = useState("");
@@ -73,7 +76,7 @@ function AuthPage() {
         });
         if (error) throw error;
         if (!data.session || !data.user) throw new Error("تعذّر إكمال التسجيل.");
-        await goNext(data.user.id, accountType);
+        await goNext(data.user.id);
       } else {
         const { data, error } = await supabase.auth.signInWithPassword({ email: email.trim(), password });
         if (error) throw error;

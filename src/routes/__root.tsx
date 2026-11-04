@@ -13,6 +13,7 @@ import { useEffect, type ReactNode } from "react";
 import appCss from "../styles.css?url";
 import { reportLovableError } from "../lib/lovable-error-reporting";
 import { Toaster } from "@/components/ui/sonner";
+import { supabase } from "@/integrations/supabase/client";
 
 function NotFoundComponent() {
   return (
@@ -130,6 +131,30 @@ function RootShell({ children }: { children: ReactNode }) {
 
 function RootComponent() {
   const { queryClient } = Route.useRouteContext();
+  const router = useRouter();
+
+  // When the signed-in account changes (sign-out, sign-in as someone else, or another tab),
+  // drop every cached screen and role so nothing from the previous account is reused.
+  useEffect(() => {
+    let lastUser: string | null | undefined;
+    const { data } = supabase.auth.onAuthStateChange((event, session) => {
+      const id = session?.user.id ?? null;
+      if (event === "INITIAL_SESSION") {
+        lastUser = id;
+        return;
+      }
+      if (event !== "SIGNED_IN" && event !== "SIGNED_OUT" && event !== "USER_UPDATED") return;
+      if (id === lastUser) return;
+      lastUser = id;
+      // Defer: calling back into auth inside this callback can stall it.
+      setTimeout(() => {
+        void queryClient.cancelQueries();
+        queryClient.clear();
+        void router.invalidate();
+      }, 0);
+    });
+    return () => data.subscription.unsubscribe();
+  }, [queryClient, router]);
 
   return (
     <QueryClientProvider client={queryClient}>
