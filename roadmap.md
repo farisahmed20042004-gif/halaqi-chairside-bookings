@@ -16,5 +16,6 @@
 - [x] Customer enters barber code once (saved on phone + account), "تغيير الحلاق" in settings
 - [x] "مواعيدي" page: status badges, newest first, live updates, big green card for the next confirmed booking
 - [x] Live debts: barber picks a customer or types name+phone, per-customer balance and payment history; customer «ديوني» grouped by barber; live in-app alerts for new debt/payment (tested in DB + browser)
+- [x] Fix role routing: barber and customer accounts each open only their own pages; role cache cleared on sign-out/switch (tested in browser)
 - [ ] Publish the live-debts update — waiting on user approval
 - [ ] Later (not started): phone push notifications, offline mode, editing working hours after setup
