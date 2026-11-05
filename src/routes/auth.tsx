@@ -54,7 +54,11 @@ function AuthPage() {
   async function goNext(userId: string) {
     await queryClient.cancelQueries();
     queryClient.clear();
-    const role = await queryClient.fetchQuery(roleQuery(userId));
+    // Read directly (not through the cache) so a cache reset from the sign-in event can't cancel it.
+    const { data, error } = await supabase.from("user_roles").select("role").eq("user_id", userId).maybeSingle();
+    if (error) throw error;
+    const role = data?.role ?? "customer";
+    queryClient.setQueryData(roleQuery(userId).queryKey, role);
     navigate({ href: landingFor(role, search.redirect), replace: true });
   }
 
