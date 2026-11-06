@@ -27,7 +27,13 @@ export function useSignOut() {
   return async () => {
     await queryClient.cancelQueries();
     queryClient.clear();
+    // Drop everything this account left on the phone: cached role, saved
+    // barbers list, and the session tokens (signOut removes those itself).
+    localStorage.removeItem("halaqi_role");
+    localStorage.removeItem("halaqi_user_id");
+    localStorage.removeItem(SAVED_BARBERS_KEY);
     await supabase.auth.signOut();
-    navigate({ to: "/auth", replace: true });
+    // Back to the landing page; with no session it shows the two role buttons.
+    navigate({ to: "/", replace: true });
   };
 }
