@@ -4,6 +4,7 @@ import type { Session } from "@supabase/supabase-js";
 import { useEffect, useState } from "react";
 
 import { supabase } from "@/integrations/supabase/client";
+import { SAVED_BARBERS_KEY } from "@/lib/rules";
 
 /** Session for showing signed-in/out UI on public pages (read after hydration). */
 export function useSession() {
