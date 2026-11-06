@@ -1,7 +1,10 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { ChevronLeft, Scissors, User } from "lucide-react";
+import { useEffect, useState } from "react";
 
 import heroImg from "@/assets/barbershop.jpg";
+import { supabase } from "@/integrations/supabase/client";
+import { roleHome, type AccountRole } from "@/lib/rules";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -18,6 +21,49 @@ export const Route = createFileRoute("/")({
 });
 
 function Home() {
+  const navigate = useNavigate();
+  // Until we know whether this phone already has a signed-in account, show a
+  // short splash instead of the landing so returning users never see it flash.
+  const [checked, setChecked] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    void (async () => {
+      const { data } = await supabase.auth.getSession();
+      const user = data.session?.user;
+      if (!user) {
+        if (!cancelled) setChecked(true);
+        return;
+      }
+      // Fast path: the role cached on this phone for this same account.
+      let role: AccountRole | null = null;
+      if (localStorage.getItem("halaqi_user_id") === user.id) {
+        const cached = localStorage.getItem("halaqi_role");
+        if (cached === "barber" || cached === "customer") role = cached;
+      }
+      if (!role) {
+        const { data: row } = await supabase.from("user_roles").select("role").eq("user_id", user.id).maybeSingle();
+        role = row?.role === "barber" ? "barber" : "customer";
+      }
+      localStorage.setItem("halaqi_user_id", user.id);
+      localStorage.setItem("halaqi_role", role);
+      if (!cancelled) navigate({ href: roleHome(role), replace: true });
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [navigate]);
+
+  if (!checked) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-ink">
+        <div className="h-16 w-5 overflow-hidden rounded-full ring-2 ring-brass">
+          <div className="barber-pole h-full w-full" />
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="relative min-h-screen overflow-hidden bg-ink text-ink-foreground">
       <img

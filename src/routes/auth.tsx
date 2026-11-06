@@ -59,6 +59,10 @@ function AuthPage() {
     if (error) throw error;
     const role = data?.role ?? "customer";
     queryClient.setQueryData(roleQuery(userId).queryKey, role);
+    // Remember this account's role on the phone so the landing page can skip
+    // straight to the right dashboard next time the app opens.
+    localStorage.setItem("halaqi_user_id", userId);
+    localStorage.setItem("halaqi_role", role);
     navigate({ href: landingFor(role, search.redirect), replace: true });
   }
 
